@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vokabeltrainer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#262624;
+    --bg-2:#2b2a28;
+    --surface:#302f2c;
+    --surface-2:#3a3936;
+    --border:#46453f;
+    --text:#F3F1EA;
+    --text-soft:#A9A69C;
+    --gold:#D2A94A;
+    --gold-text:#2A2004;
+    --red:#E5484D;
+    --red-soft:#3A2422;
+    --green:#2FA968;
+    --green-soft:#1E332A;
+    --blue:#4F8CF0;
+    --blue-soft:#1F2C40;
+    --danger:#E5484D;
+    --radius:16px;
+    --serif:'Lora', Georgia, serif;
+    --sans:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;}
+  body{
+    background-image: radial-gradient(circle at 30% -10%, #33322e 0%, var(--bg) 50%);
+    background-attachment:fixed;
+  }
+  #app{max-width:480px; margin:0 auto; min-height:100vh; padding:22px 18px 48px; display:flex; flex-direction:column;}
+
+  .header{padding:8px 2px 22px;}
+  .header .eyebrow{font-size:13px; color:var(--text-soft); letter-spacing:.02em;}
+  .header h1{font-family:var(--sans); font-weight:600; font-size:29px; margin:3px 0 0; color:var(--text);}
+
+  .card{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow:0 8px 22px rgba(0,0,0,.35);
+    margin-bottom:14px;
+    border:1px solid var(--border);
+  }
+
+  button{font-family:var(--sans); cursor:pointer; border:none;}
+  .btn{
+    width:100%; padding:15px 18px; border-radius:12px; font-size:16px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; gap:9px; transition:transform .12s ease, opacity .12s ease;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--gold); color:var(--gold-text);}
+  .btn-secondary{background:var(--surface-2); color:var(--text); border:1px solid var(--border);}
+  .btn-outline{background:transparent; color:var(--text); border:1.5px solid var(--border);}
+  .btn-ghost{background:transparent; color:var(--text-soft); font-weight:500; padding:10px;}
+  .btn:disabled{opacity:.4; pointer-events:none;}
+  .btn-danger{background:var(--danger); color:#fff;}
+
+  .segmented{display:flex; background:var(--bg-2); border-radius:11px; padding:3px; gap:3px; border:1px solid var(--border);}
+  .segmented button{flex:1; padding:9px 4px; font-size:13px; font-weight:600; border-radius:9px; background:transparent; color:var(--text-soft);}
+  .segmented button.active{background:var(--surface-2); color:var(--text);}
+
+  .label{font-size:12.5px; font-weight:600; color:var(--text-soft); margin-bottom:8px; display:block;}
+
+  .folder-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:18px 18px; border-radius:14px; margin-bottom:10px; cursor:pointer; color:#fff;
+    box-shadow:0 6px 16px rgba(0,0,0,.28);
+  }
+  .folder-row:active{transform:scale(0.99);}
+  .folder-row .ficon{font-size:22px; line-height:1;}
+  .folder-row .fname{font-family:var(--sans); font-size:17px; font-weight:600;}
+  .folder-row .fcount{font-size:13px; opacity:.85; margin-top:2px;}
+  .folder-row.nicht{background:linear-gradient(135deg,#E5484D,#C43A3F);}
+  .folder-row.kann{background:linear-gradient(135deg,#31B073,#1F8C57);}
+  .folder-row.alle{background:linear-gradient(135deg,#5A9AF5,#3E76D6);}
+  .folder-row.disabled{opacity:.4; box-shadow:none;}
+  .chev{font-size:20px; opacity:.85;}
+
+  .section-title{font-family:var(--sans); font-weight:600; font-size:15px; color:var(--text); margin:22px 0 10px 2px;}
+
+  .toplink{color:var(--text-soft); font-size:14px; text-align:center; margin-top:18px; background:none; text-decoration:underline; text-underline-offset:3px;}
+
+  .backbar{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+  .backbar button{background:none; color:var(--text); font-size:15px; font-weight:600; padding:6px 0; display:flex; align-items:center; gap:4px;}
+
+  .hint{font-size:13.5px; color:var(--text-soft); line-height:1.5; margin:0 0 14px;}
+  .rowpair{display:flex; gap:8px; margin-bottom:9px; align-items:center;}
+  .rowpair input[type=text]{
+    flex:1; min-width:0; padding:11px 12px; border-radius:9px; border:1.5px solid var(--border);
+    font-size:15px; font-family:var(--sans); background:var(--bg-2); color:var(--text);
+  }
+  .rowpair input:focus{outline:none; border-color:var(--gold);}
+  .rowpair .arrow{color:var(--text-soft); font-size:14px; flex-shrink:0;}
+  .rowpair .del{background:none; color:var(--text-soft); font-size:19px; padding:4px 6px; flex-shrink:0;}
+  .colheads{display:flex; gap:8px; font-size:11.5px; font-weight:600; color:var(--text-soft); margin-bottom:6px; padding:0 2px;}
+  .colheads span:first-child{flex:1;}
+  .colheads span:last-child{flex:1; margin-left:22px;}
+
+  .loading{display:flex; flex-direction:column; align-items:center; padding:38px 10px; gap:14px;}
+  .spinner{width:34px; height:34px; border-radius:50%; border:3px solid var(--border); border-top-color:var(--gold); animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading p{color:var(--text-soft); font-size:14px; margin:0;}
+
+  .quiz-progress{color:var(--text-soft); font-size:13px; text-align:center; margin-bottom:10px;}
+  .flashcard{
+    background:var(--surface); border-radius:20px; padding:46px 22px; text-align:center;
+    box-shadow:0 10px 26px rgba(0,0,0,.35); margin-bottom:16px; border:1px solid var(--border);
+  }
+  .flashcard .dir{font-size:12px; font-weight:600; color:var(--text-soft); margin-bottom:14px;}
+  .flashcard .word{font-family:var(--sans); font-size:32px; font-weight:600; word-break:break-word; color:var(--text);}
+  .answer-input{
+    width:100%; padding:15px 16px; border-radius:12px; border:1.5px solid var(--border);
+    font-size:17px; font-family:var(--sans); background:var(--bg-2); color:var(--text); margin-bottom:12px; text-align:center;
+  }
+  .answer-input:focus{outline:none; border-color:var(--gold);}
+  .answer-input.correct{border-color:var(--green); background:var(--green-soft);}
+  .answer-input.wrong{border-color:var(--red); background:var(--red-soft);}
+
+  .feedback{
+    border-radius:14px; padding:18px 16px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px;
+    align-items:center; text-align:center;
+  }
+  .feedback.ok{background:var(--green-soft); color:#6FDBA0;}
+  .feedback.no{background:var(--red-soft); color:#F19A9D;}
+  .feedback .fb-headline{font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:6px; line-height:1; text-transform:uppercase; letter-spacing:.03em; opacity:.9;}
+  .feedback .fb-icon{font-size:16px; line-height:1;}
+  .feedback .fb-label{font-family:var(--sans); font-size:12.5px; font-weight:500; opacity:.85; display:block; margin-bottom:3px;}
+  .feedback .fb-value{font-family:var(--sans); font-size:28px; font-weight:700; line-height:1.25; word-break:break-word;}
+
+  .verb-card{background:var(--bg-2); border-radius:12px; padding:14px; margin-bottom:10px; border:1.5px solid var(--border); position:relative;}
+  .verb-card .del{position:absolute; top:6px; right:6px; background:none; color:var(--text-soft); font-size:18px; padding:4px 8px;}
+  .verb-field{margin-bottom:8px;}
+  .verb-field:last-child{margin-bottom:0;}
+  .verb-field label{font-size:11px; font-weight:600; color:var(--text-soft); display:block; margin-bottom:4px;}
+  .verb-field input[type=text]{
+    width:100%; padding:10px 12px; border-radius:9px; border:1.5px solid var(--border);
+    font-size:15px; font-family:var(--sans); background:var(--surface); color:var(--text);
+  }
+  .verb-field input:focus{outline:none; border-color:var(--gold);}
+  .verb-field input.correct{border-color:var(--green); background:var(--green-soft);}
+  .verb-field input.wrong{border-color:var(--red); background:var(--red-soft);}
+
+  .verb-prompt{display:flex; flex-direction:column; gap:6px; margin-top:4px;}
+  .verb-prompt-row{display:flex; align-items:baseline; justify-content:center; gap:8px;}
+  .verb-prompt-label{font-size:11.5px; font-weight:600; color:var(--text-soft); min-width:78px; text-align:right;}
+  .verb-prompt-value{font-family:var(--sans); font-size:22px; font-weight:600; color:var(--text);}
+  .verb-answers{display:flex; flex-direction:column; gap:10px; margin-bottom:12px;}
+  .rowpair input.warn{border-color:var(--red); background:var(--red-soft);}
+  .verb-field input.warn{border-color:var(--red); background:var(--red-soft);}
+
+  .backup-row{display:flex; gap:10px; margin-top:6px;}
+  .backup-row .btn{flex:1;}
+
+  .summary-stats{display:flex; gap:10px; margin-bottom:16px;}
+  .stat{flex:1; background:var(--surface); border-radius:14px; padding:16px 10px; text-align:center; border:1px solid var(--border);}
+  .stat .n{font-family:var(--sans); font-size:26px; font-weight:700;}
+  .stat .l{font-size:12px; color:var(--text-soft); margin-top:2px;}
+  .stat.ok .n{color:#6FDBA0;}
+  .stat.no .n{color:#F19A9D;}
+
+  .vlist-item{display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--border);}
+  .vlist-item:last-child{border-bottom:none;}
+  .vlist-words{font-size:15px; color:var(--text);}
+  .vlist-words .en{color:var(--text-soft);}
+  .vlist-tag{font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; margin-top:4px; display:inline-block;}
+  .vlist-tag.nicht{background:var(--red-soft); color:#F19A9D;}
+  .vlist-tag.kann{background:var(--green-soft); color:#6FDBA0;}
+  .vlist-item .del{background:none; color:#7d7b74; font-size:18px; padding:4px 8px;}
+  .vlist-item .edit{background:none; color:var(--text-soft); font-size:16px; padding:4px 8px;}
+  .vlist-item .item-actions{display:flex; align-items:center; flex-shrink:0;}
+  .vlist-item.edit-mode{display:block; padding:14px 4px;}
+  .vlist-item.edit-mode .verb-field{margin-bottom:8px;}
+  .vlist-item.edit-mode .edit-actions{display:flex; gap:8px; margin-top:6px;}
+  .vlist-item.edit-mode .edit-actions .btn{padding:10px; font-size:14px;}
+
+  .empty{text-align:center; padding:30px 10px; color:var(--text-soft); font-size:14px;}
+
+  .upload-grid{display:flex; gap:10px;}
+  .upload-grid .btn{flex:1;}
+
+  #crop-container{position:relative; width:100%; border-radius:12px; overflow:hidden; touch-action:none; border:1px solid var(--border); background:#000;}
+  #crop-container img{width:100%; display:block; pointer-events:none; -webkit-user-select:none; user-select:none;}
+  .crop-line{position:absolute; top:0; bottom:0; width:3px; background:var(--gold); cursor:ew-resize;}
+  .crop-line .handle{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:var(--gold); box-shadow:0 2px 8px rgba(0,0,0,.4);}
+  .crop-line .handle::before{content:"‹›"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; color:var(--gold-text); font-weight:700;}
+  .crop-col-label{position:absolute; top:8px; font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:20px;}
+
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // CLOUD-SYNC EINRICHTEN (optional)
+  // ============================================================
+  // Trage hier deine eigene Firebase-Projekt-Konfiguration ein, um
+  // Vokabeln automatisch über alle Geräte hinweg zu synchronisieren
+  // (kein Export/Import mehr nötig). Kostenlos unter https://console.firebase.google.com
+  //
+  // Kurzanleitung:
+  //  1. Firebase-Projekt anlegen (kostenloser "Spark"-Plan reicht).
+  //  2. Build > Authentication > "E-Mail/Passwort" aktivieren.
+  //  3. Build > Firestore Database > Datenbank erstellen.
+  //  4. In den Firestore-Regeln (Rules-Tab) genau das hier einfügen:
+  //       rules_version = '2';
+  //       service cloud.firestore {
+  //         match /databases/{database}/documents {
+  //           match /users/{userId} {
+  //             allow read, write: if request.auth != null && request.auth.uid == userId;
+  //           }
+  //         }
+  //       }
+  //  5. Projekteinstellungen (Zahnrad) > "Meine Apps" > Web-App (</>) hinzufügen.
+  //     Dort bekommst du ein "firebaseConfig"-Objekt - die Werte unten eintragen.
+  //
+  // Ohne eigene Werte (Platzhalter unverändert) läuft die App wie bisher
+  // rein lokal auf dem jeweiligen Gerät weiter - nichts bricht dadurch.
+  var firebaseConfig = {
+    apiKey: "AIzaSyB5Lm2vyRfT06mQPke_9139lNY5w2rJ25U",
+    authDomain: "vokabeln-oscar.firebaseapp.com",
+    projectId: "vokabeln-oscar",
+    storageBucket: "vokabeln-oscar.firebasestorage.app",
+    messagingSenderId: "741287549695",
+    appId: "1:741287549695:web:82215600df52037d874aca"
+  };
+  var CLOUD_CONFIGURED = !!(firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf("DEIN_") !== 0);
+  // ============================================================
+
+  var STORAGE_KEY = "vocab-app-data";
+
+  var state = {
+    view: "home",
+    data: { items: [], settings: { direction: "de-en", verb3Direction: "de-en" } },
+    reviewRows: [],
+    learnQueue: [],
+    learnIndex: 0,
+    learnStats: { correct: 0, wrong: 0 },
+    currentAnswered: false,
+    lastCorrect: null,
+    captureImage: null,
+    cropMode: "table",
+    splitPercent: 50,
+    vocabType: "pair",
+    cropSplits: [50],
+    reviewVocabType: "pair",
+    learnTypeFilter: "pair",
+    editingId: null,
+    cloudEnabled: false,
+    authUser: null,
+    authMode: "login",
+    authError: null
+  };
+
+  var dragState = { active: false, splitIdx: 0 };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  async function storageGet(){
+    if(state.cloudEnabled && state.authUser){
+      try{
+        var docSnap = await firebase.firestore().collection("users").doc(state.authUser.uid).get();
+        if(docSnap.exists){
+          var payload = docSnap.data().payload;
+          if(payload){
+            try{ localStorage.setItem(STORAGE_KEY, payload); }catch(e){ /* ignore */ }
+            return payload;
+          }
+        }
+        return null;
+      }catch(e){ /* offline o.ä. - lokalen Stand als Fallback nutzen */ }
+    }
+    if(window.storage && typeof window.storage.get === "function"){
+      try{
+        var res = await window.storage.get(STORAGE_KEY, false);
+        return res ? res.value : null;
+      }catch(e){ /* fall through */ }
+    }
+    try{ return localStorage.getItem(STORAGE_KEY); }catch(e){ return null; }
+  }
+
+  async function storageSet(value){
+    if(state.cloudEnabled && state.authUser){
+      try{ localStorage.setItem(STORAGE_KEY, value); }catch(e){ /* ignore */ }
+      try{
+        await firebase.firestore().collection("users").doc(state.authUser.uid)
+          .set({ payload: value, updatedAt: Date.now() });
+        return;
+      }catch(e){ /* offline - Daten bleiben lokal gespeichert und werden beim nächsten
+                    erfolgreichen Speichern automatisch nachgezogen */ }
+      return;
+    }
+    if(window.storage && typeof window.storage.set === "function"){
+      try{ await window.storage.set(STORAGE_KEY, value, false); return; }catch(e){ /* fall through */ }
+    }
+    try{ localStorage.setItem(STORAGE_KEY, value); }catch(e){ /* ignore */ }
+  }
+
+  async function loadData(){
+    try{
+      var raw = await storageGet();
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.items)){
+          state.data = parsed;
+          if(!state.data.settings) state.data.settings = { direction: "de-en", verb3Direction: "de-en" };
+          // "Gemischt" wurde entfernt - alte Sicherungen auf eine feste Richtung migrieren.
+          if(state.data.settings.direction !== "de-en" && state.data.settings.direction !== "en-de"){
+            state.data.settings.direction = "de-en";
+          }
+          if(!state.data.settings.verb3Direction){
+            state.data.settings.verb3Direction = "de-en";
+          }
+        }
+      }
+    }catch(e){ /* no data yet */ }
+  }
+
+  async function saveData(){
+    try{ await storageSet(JSON.stringify(state.data)); }
+    catch(e){ console.error("Speichern fehlgeschlagen", e); }
+  }
+
+  // Konfiguration für die beiden Vokabel-Typen: normale Wortpaare und
+  // unregelmäßige Verben mit 3 Zeitformen (Infinitiv, Simple Past, Partizip II).
+  var VOCAB_TYPES = {
+    pair: {
+      keys: ["de","en"],
+      shortLabels: ["DE","EN"],
+      fieldLabels: ["Deutsch","Englisch"],
+      splits: [50]
+    },
+    verb3: {
+      keys: ["de","inf","past","pp"],
+      shortLabels: ["Sp. 1","Sp. 2","Sp. 3","Sp. 4"],
+      fieldLabels: ["Deutsch","Infinitiv","Simple Past","Partizip II"],
+      splits: [25,50,75]
+    }
+  };
+
+  function vocabConfig(type){
+    return VOCAB_TYPES[type] || VOCAB_TYPES.pair;
+  }
+
+  function emptyRow(type){
+    var row = {};
+    vocabConfig(type).keys.forEach(function(k){ row[k] = ""; });
+    return row;
+  }
+
+  function itemType(item){
+    return item.type || "pair";
+  }
+
+  function itemsIn(folder, type){
+    var pool = folder === "alle" ? state.data.items.slice() : state.data.items.filter(function(i){ return i.folder === folder; });
+    if(type) pool = pool.filter(function(i){ return itemType(i) === type; });
+    return pool;
+  }
+
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t=a[i]; a[i]=a[j]; a[j]=t;
+    }
+    return a;
+  }
+
+  function normalize(s){
+    return (s||"").trim().toLowerCase().replace(/\s+/g," ");
+  }
+
+  function answerMatches(given, accepted){
+    var g = normalize(given);
+    if(!g) return false;
+    var options = accepted.split(/[\/,]/).map(normalize).filter(Boolean);
+    return options.indexOf(g) !== -1;
+  }
+
+  function render(){
+    var el = document.getElementById("app");
+    if(state.view === "loading") el.innerHTML = renderLoadingScreen();
+    else if(state.view === "login") el.innerHTML = renderLogin();
+    else if(state.view === "home") el.innerHTML = renderHome();
+    else if(state.view === "capture") el.innerHTML = renderCapture();
+    else if(state.view === "crop") el.innerHTML = renderCrop();
+    else if(state.view === "review") el.innerHTML = renderReview();
+    else if(state.view === "learn") el.innerHTML = renderLearn();
+    else if(state.view === "summary") el.innerHTML = renderSummary();
+    else if(state.view === "manage") el.innerHTML = renderManage();
+    bindEvents();
+  }
+
+  function renderLoadingScreen(){
+    return '<div class="loading"><div class="spinner"></div><p>Lädt …</p></div>';
+  }
+
+  function renderLogin(){
+    var html = '';
+    html += renderHeader("Vokabeltrainer", "Anmelden für geräteübergreifende Vokabeln");
+    html += '<div class="card">';
+    html += '<p class="hint" style="margin-top:0;">Melde dich mit E-Mail und Passwort an, damit deine Vokabeln automatisch auf allen Geräten verfügbar sind.</p>';
+    if(state.authError){
+      html += '<div class="feedback no" style="margin-bottom:14px;"><div class="fb-headline"><span class="fb-icon">❌</span>'+escapeHtml(state.authError)+'</div></div>';
+    }
+    html += '<span class="label">E-Mail</span>';
+    html += '<input type="email" id="auth-email" class="answer-input" style="margin-bottom:12px;" autocomplete="email" placeholder="du@beispiel.de">';
+    html += '<span class="label">Passwort</span>';
+    html += '<input type="password" id="auth-password" class="answer-input" style="margin-bottom:16px;" autocomplete="'+(state.authMode==="register"?"new-password":"current-password")+'" placeholder="mind. 6 Zeichen">';
+    html += '<button class="btn btn-primary" id="btn-auth-submit" style="margin-bottom:10px;">'+(state.authMode==="register"?"Konto erstellen":"Anmelden")+'</button>';
+    html += '<button class="btn-ghost" id="btn-auth-toggle" style="width:100%;">'+(state.authMode==="register"?"Schon ein Konto? Anmelden":"Noch kein Konto? Registrieren")+'</button>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderHeader(title, sub){
+    return '<div class="header"><div class="eyebrow">'+(sub||"Karteikasten für Wörter")+'</div><h1>'+title+'</h1></div>';
+  }
+
+  function renderHome(){
+    var typeFilter = state.learnTypeFilter;
+    var nicht = itemsIn("nicht", typeFilter).length;
+    var kann = itemsIn("kann", typeFilter).length;
+    var alle = itemsIn("alle", typeFilter).length;
+
+    var html = '';
+    html += renderHeader("Vokabeltrainer");
+
+    html += '<div class="card">';
+    html += '<button class="btn btn-primary" id="btn-capture">📷&nbsp; Vokabeln hinzufügen</button>';
+    html += '<p class="hint" style="margin:12px 0 0;">Foto aufnehmen oder ein Bild hochladen — die App erkennt Wortpaare automatisch und legt sie in „Kann ich nicht" ab.</p>';
+    html += '</div>';
+
+    html += '<div class="card">';
+    html += '<span class="label">Was möchtest du lernen?</span>';
+    html += '<div class="segmented" id="learn-type-segment">';
+    html += '<button data-ltype="pair" class="'+(typeFilter==="pair"?"active":"")+'">Normale Vokabeln</button>';
+    html += '<button data-ltype="verb3" class="'+(typeFilter==="verb3"?"active":"")+'">3 Zeitformen</button>';
+    html += '</div>';
+    html += '</div>';
+
+    var activeDir = typeFilter === "verb3" ? state.data.settings.verb3Direction : state.data.settings.direction;
+    html += '<div class="card">';
+    html += '<span class="label">Abfragerichtung</span>';
+    html += '<div class="segmented" id="dir-segment">';
+    html += '<button data-dir="de-en" class="'+(activeDir==="de-en"?"active":"")+'">Deutsch → Englisch</button>';
+    html += '<button data-dir="en-de" class="'+(activeDir==="en-de"?"active":"")+'">Englisch → Deutsch</button>';
+    html += '</div>';
+    if(typeFilter === "verb3"){
+      html += '<p class="hint" style="margin:10px 0 0;">'+(activeDir==="de-en"
+        ? 'Du siehst das deutsche Verb und gibst alle 3 englischen Formen ein.'
+        : 'Du siehst alle 3 englischen Formen und gibst das deutsche Verb ein.')+'</p>';
+    } else {
+      html += '<p class="hint" style="margin:10px 0 0;">'+(activeDir==="de-en"
+        ? 'Du siehst das deutsche Wort und gibst die englische Übersetzung ein.'
+        : 'Du siehst das englische Wort und gibst die deutsche Übersetzung ein.')+'</p>';
+    }
+    html += '</div>';
+
+    html += '<div class="section-title">Karteikasten — '+(typeFilter==="verb3"?"3 Zeitformen":"Normale Vokabeln")+'</div>';
+    html += folderRow("nicht", "Kann ich nicht", nicht, "nicht", "🔴");
+    html += folderRow("kann", "Kann ich", kann, "kann", "🟢");
+    html += folderRow("alle", "Alle lernen", alle, "alle", "🔵");
+
+    html += '<button class="toplink" id="btn-manage">Vokabeln verwalten</button>';
+
+    return html;
+  }
+
+  function folderRow(id, name, count, cls, icon){
+    var disabled = count === 0;
+    return '<div class="folder-row '+cls+(disabled?" disabled":"")+'" data-folder="'+id+'">'+
+      '<div class="ficon">'+icon+'</div>'+
+      '<div style="flex:1;"><div class="fname">'+name+'</div><div class="fcount">'+count+' Vokabel'+(count===1?"":"n")+'</div></div>'+
+      '<div class="chev">'+(disabled?"—":"›")+'</div></div>';
+  }
+
+  function renderCapture(){
+    var html = '';
+    html += backBar("home", "Vokabeln hinzufügen");
+    if(state.captureLoading){
+      html += '<div class="card"><div class="loading"><div class="spinner"></div><p>'+escapeHtml(state.captureLoadingMsg||"Text wird erkannt …")+'</p></div></div>';
+    } else {
+      html += '<div class="card">';
+      html += '<span class="label">Was möchtest du hinzufügen?</span>';
+      html += '<div class="segmented" id="vocab-type-segment">';
+      html += '<button data-vtype="pair" class="'+(state.vocabType==="pair"?"active":"")+'">Vokabelpaar</button>';
+      html += '<button data-vtype="verb3" class="'+(state.vocabType==="verb3"?"active":"")+'">Verb (3 Zeitformen)</button>';
+      html += '</div>';
+      html += '<p class="hint" style="margin:10px 0 0;">'+(state.vocabType==="verb3"
+        ? 'Für unregelmäßige Verben wie „beißen – bite – bit – bitten". Beim Üben werden alle 3 englischen Formen abgefragt.'
+        : 'Normale Deutsch/Englisch-Wortpaare.')+'</p>';
+      html += '</div>';
+
+      html += '<div class="card">';
+      html += '<p class="hint" style="margin-top:0;">Am besten funktioniert die Erkennung bei klar geschriebenen Listen oder Tabellen.</p>';
+      html += '<div class="upload-grid">';
+      html += '<button class="btn btn-secondary" id="btn-take-photo">📷&nbsp; Foto aufnehmen</button>';
+      html += '<button class="btn btn-secondary" id="btn-upload-photo">🖼️&nbsp; Bild hochladen</button>';
+      html += '</div>';
+      html += '<div style="height:10px;"></div>';
+      html += '<button class="btn btn-outline" id="btn-manual">✎&nbsp; Manuell eingeben</button>';
+      html += '<input type="file" id="file-input-camera" accept="image/*" capture="environment">';
+      html += '<input type="file" id="file-input-upload" accept="image/*">';
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function renderCrop(){
+    var cfg = vocabConfig(state.vocabType);
+    var colCount = cfg.keys.length;
+    var html = '';
+    html += backBar("capture", "Foto vorbereiten");
+    html += '<div class="card">';
+    html += '<span class="label">Was zeigt das Foto?</span>';
+    html += '<div class="segmented" id="crop-mode-segment">';
+    html += '<button data-mode="table" class="'+(state.cropMode==="table"?"active":"")+'">Tabelle ('+colCount+' Spalten)</button>';
+    html += '<button data-mode="list" class="'+(state.cropMode==="list"?"active":"")+'">Liste (1 Spalte)</button>';
+    html += '</div>';
+    html += '<div style="height:14px;"></div>';
+    if(state.cropMode === "table"){
+      html += '<p class="hint" style="margin-top:0;">Verschiebe die Linien genau zwischen die '+colCount+' Spalten. '+(state.vocabType==="verb3"?"In welcher Reihenfolge Deutsch/Infinitiv/Simple Past/Partizip stehen, ist egal — die App erkennt automatisch, welche Spalte Deutsch ist.":"Das trennt die Texterkennung sauber pro Spalte.")+'</p>';
+      html += '<div id="crop-container">';
+      html += '<img src="'+state.captureImage+'">';
+      var boundaries = [0].concat(state.cropSplits).concat([100]);
+      for(var ci=0; ci<colCount; ci++){
+        var centerPct = (boundaries[ci] + boundaries[ci+1]) / 2;
+        html += '<div class="crop-col-label" style="left:'+centerPct+'%; transform:translateX(-50%);">'+cfg.shortLabels[ci]+'</div>';
+      }
+      state.cropSplits.forEach(function(pct, i){
+        html += '<div class="crop-line" data-split-idx="'+i+'" style="left:'+pct+'%;"><div class="handle"></div></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<p class="hint" style="margin-top:0;">Die gesamte Seite wird als eine Liste erkannt (pro Zeile: '+cfg.fieldLabels.join(" – ")+').</p>';
+      html += '<img src="'+state.captureImage+'" style="width:100%; border-radius:12px; display:block; border:1px solid var(--border);">';
+    }
+    html += '</div>';
+    html += '<button class="btn btn-primary" id="btn-crop-continue">Weiter</button>';
+    return html;
+  }
+
+  function backBar(target, title){
+    return '<div class="backbar"><button data-nav="'+target+'">‹ Zurück</button></div>'+renderHeader(title, "");
+  }
+
+  function renderReview(){
+    var cfg = vocabConfig(state.reviewVocabType);
+    var html = '';
+    html += backBar("capture", "Vokabeln prüfen");
+    html += '<div class="card">';
+
+    if(state.reviewVocabType === "verb3"){
+      html += '<p class="hint" style="margin-top:0;">Bitte kurz kontrollieren und korrigieren, bevor die Verben gespeichert werden. <b>Rot markierte Felder</b> wurden nicht erkannt und sollten ergänzt werden.</p>';
+      state.reviewRows.forEach(function(row, idx){
+        html += '<div class="verb-card" data-idx="'+idx+'">';
+        html += '<button class="del" data-del="'+idx+'">×</button>';
+        cfg.keys.forEach(function(k, ki){
+          var isEmpty = !(row[k]||"").trim();
+          html += '<div class="verb-field"><label>'+cfg.fieldLabels[ki]+'</label>';
+          html += '<input type="text" class="rev-field'+(isEmpty?" warn":"")+'" data-key="'+k+'" value="'+escapeHtml(row[k])+'" placeholder="'+cfg.fieldLabels[ki].toLowerCase()+'"></div>';
+        });
+        html += '</div>';
+      });
+    } else {
+      html += '<p class="hint" style="margin-top:0;">Bitte kurz kontrollieren und korrigieren, bevor die Vokabeln gespeichert werden. <b>Rot markierte Felder</b> wurden nicht erkannt und sollten ergänzt werden. Die Sprachen werden automatisch erkannt — falls Deutsch/Englisch vertauscht sind, einfach tauschen:</p>';
+      html += '<button class="btn btn-outline" id="btn-swap-columns" style="margin-bottom:14px;">⇄&nbsp; Deutsch / Englisch tauschen</button>';
+      html += '<div class="colheads"><span>Deutsch</span><span>Englisch</span></div>';
+      state.reviewRows.forEach(function(row, idx){
+        html += '<div class="rowpair" data-idx="'+idx+'">';
+        html += '<input type="text" class="rev-de'+((row.de||"").trim()?"":" warn")+'" value="'+escapeHtml(row.de)+'" placeholder="deutsch">';
+        html += '<span class="arrow">→</span>';
+        html += '<input type="text" class="rev-en'+((row.en||"").trim()?"":" warn")+'" value="'+escapeHtml(row.en)+'" placeholder="english">';
+        html += '<button class="del" data-del="'+idx+'">×</button>';
+        html += '</div>';
+      });
+    }
+    html += '<button class="btn-ghost" id="btn-add-row" style="padding:8px 0;">+ '+(state.reviewVocabType==="verb3"?"Verb":"Zeile")+' hinzufügen</button>';
+    html += '</div>';
+    html += '<button class="btn btn-primary" id="btn-save-review">In „Kann ich nicht" speichern</button>';
+    return html;
+  }
+
+  var DIR_LABEL = { "de-en": "Deutsch → Englisch", "en-de": "Englisch → Deutsch" };
+
+  // Große, klar sichtbare Rückmeldung. Zeigt die Lösung IMMER an - auch bei
+  // richtiger Antwort - damit man sie sich zusätzlich einprägen kann.
+  function feedbackBanner(isCorrect, solutionText){
+    var html = '<div class="feedback '+(isCorrect?"ok":"no")+'">';
+    html += '<div class="fb-headline"><span class="fb-icon">'+(isCorrect?"✅":"❌")+'</span>'+(isCorrect?"Richtig":"Leider falsch")+'</div>';
+    html += '<div><span class="fb-label">Lösung</span><div class="fb-value">'+escapeHtml(solutionText)+'</div></div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderLearn(){
+    var total = state.learnQueue.length;
+    var idx = state.learnIndex;
+    if(idx >= total){
+      state.view = "summary";
+      return renderSummary();
+    }
+    var current = state.learnQueue[idx];
+    var html = '';
+    html += backBar("home", folderTitle(state.learnFolder));
+    html += '<div class="quiz-progress">Vokabel '+(idx+1)+' von '+total+'</div>';
+
+    if(itemType(current.item) === "verb3"){
+      return html + renderLearnVerb3(current);
+    }
+    return html + renderLearnPair(current);
+  }
+
+  function renderLearnPair(current){
+    var html = '';
+    html += '<div class="flashcard">';
+    html += '<div class="dir">'+DIR_LABEL[current.dir]+'</div>';
+    html += '<div class="word">'+escapeHtml(current.dir==="de-en" ? current.item.de : current.item.en)+'</div>';
+    html += '</div>';
+
+    var inputClass = "answer-input";
+    if(state.currentAnswered) inputClass += state.lastCorrect ? " correct" : " wrong";
+
+    html += '<input type="text" class="'+inputClass+'" id="answer-field" placeholder="Übersetzung eingeben" autocomplete="off" autocapitalize="off" autocorrect="off" '+(state.currentAnswered?"readonly":"")+'>';
+
+    if(state.currentAnswered){
+      var correctAnswer = current.dir==="de-en" ? current.item.en : current.item.de;
+      html += feedbackBanner(state.lastCorrect, correctAnswer);
+      html += '<button class="btn btn-primary" id="btn-next">Weiter</button>';
+    } else {
+      html += '<button class="btn btn-primary" id="btn-check">Prüfen</button>';
+    }
+    return html;
+  }
+
+  var VERB3_FIELDS = [
+    { key: "inf", label: "Infinitiv" },
+    { key: "past", label: "Simple Past" },
+    { key: "pp", label: "Partizip II" }
+  ];
+
+  function renderLearnVerb3(current){
+    return current.dir === "en-de" ? renderLearnVerb3EnToDe(current) : renderLearnVerb3DeToEn(current);
+  }
+
+  function renderLearnVerb3DeToEn(current){
+    var item = current.item;
+    var html = '';
+    html += '<div class="flashcard">';
+    html += '<div class="dir">Deutsch → Englisch (3 Zeitformen)</div>';
+    html += '<div class="word">'+escapeHtml(item.de)+'</div>';
+    html += '</div>';
+
+    html += '<div class="verb-answers">';
+    VERB3_FIELDS.forEach(function(f){
+      var cls = "";
+      if(state.currentAnswered){
+        cls = (state.verb3FieldCorrect && state.verb3FieldCorrect[f.key]) ? " correct" : " wrong";
+      }
+      var givenVal = (state.currentAnswered && state.verb3GivenAnswers) ? (state.verb3GivenAnswers[f.key]||"") : "";
+      html += '<div class="verb-field"><label>'+f.label+'</label>';
+      html += '<input type="text" class="verb3-answer-input'+cls+'" data-vkey="'+f.key+'" autocomplete="off" autocapitalize="off" autocorrect="off" '+(state.currentAnswered?"readonly":"")+' value="'+escapeHtml(givenVal)+'"></div>';
+    });
+    html += '</div>';
+
+    if(state.currentAnswered){
+      var solutionText = item.inf+' – '+item.past+' – '+item.pp;
+      html += feedbackBanner(state.lastCorrect, solutionText);
+      html += '<button class="btn btn-primary" id="btn-next">Weiter</button>';
+    } else {
+      html += '<button class="btn btn-primary" id="btn-check-verb3">Prüfen</button>';
+    }
+    return html;
+  }
+
+  function renderLearnVerb3EnToDe(current){
+    var item = current.item;
+    var html = '';
+    html += '<div class="flashcard">';
+    html += '<div class="dir">Englisch → Deutsch (3 Zeitformen)</div>';
+    html += '<div class="verb-prompt">';
+    VERB3_FIELDS.forEach(function(f){
+      html += '<div class="verb-prompt-row"><span class="verb-prompt-label">'+f.label+'</span><span class="verb-prompt-value">'+escapeHtml(item[f.key])+'</span></div>';
+    });
+    html += '</div>';
+    html += '</div>';
+
+    var inputClass = "answer-input";
+    if(state.currentAnswered) inputClass += state.lastCorrect ? " correct" : " wrong";
+
+    html += '<input type="text" class="'+inputClass+'" id="answer-field-verb3rev" placeholder="Deutsches Verb eingeben" autocomplete="off" autocapitalize="off" autocorrect="off" '+(state.currentAnswered?"readonly":"")+'>';
+
+    if(state.currentAnswered){
+      html += feedbackBanner(state.lastCorrect, item.de);
+      html += '<button class="btn btn-primary" id="btn-next">Weiter</button>';
+    } else {
+      html += '<button class="btn btn-primary" id="btn-check-verb3-rev">Prüfen</button>';
+    }
+    return html;
+  }
+
+  function folderTitle(f){
+    if(f==="nicht") return "Kann ich nicht";
+    if(f==="kann") return "Kann ich";
+    return "Alle Vokabeln";
+  }
+
+  function renderSummary(){
+    var s = state.learnStats;
+    var html = '';
+    html += backBar("home", "Fertig!");
+    html += '<div class="summary-stats">';
+    html += '<div class="stat ok"><div class="n">'+s.correct+'</div><div class="l">richtig</div></div>';
+    html += '<div class="stat no"><div class="n">'+s.wrong+'</div><div class="l">falsch</div></div>';
+    html += '</div>';
+    html += '<p class="hint">Eine Vokabel wandert erst nach „Kann ich", wenn sie sowohl Deutsch→Englisch als auch Englisch→Deutsch schon einmal richtig beantwortet wurde. Bei einem Fehler geht es zurück nach „Kann ich nicht".</p>';
+    html += '<button class="btn btn-primary" id="btn-home">Zur Übersicht</button>';
+    return html;
+  }
+
+  function renderManage(){
+    var html = '';
+    html += backBar("home", "Vokabeln verwalten");
+
+    if(state.cloudEnabled && state.authUser){
+      html += '<div class="card">';
+      html += '<span class="label">Cloud-Konto</span>';
+      html += '<p class="hint" style="margin-top:0;">Angemeldet als <b>'+escapeHtml(state.authUser.email||"")+'</b>. Deine Vokabeln werden automatisch auf allen Geräten synchronisiert, auf denen du dich mit diesem Konto anmeldest.</p>';
+      html += '<button class="btn btn-outline" id="btn-logout">Abmelden</button>';
+      html += '</div>';
+    }
+
+    html += '<div class="card">';
+    html += '<span class="label">Sichern &amp; auf anderem Gerät nutzen</span>';
+    html += '<p class="hint" style="margin-top:0;">Als Datei speichern und auf einem anderen Gerät (z.B. Tablet) wieder einlesen, um alle Vokabeln zu übertragen.</p>';
+    html += '<div class="backup-row">';
+    html += '<button class="btn btn-secondary" id="btn-export">⬇️&nbsp; Exportieren</button>';
+    html += '<button class="btn btn-secondary" id="btn-import">⬆️&nbsp; Importieren</button>';
+    html += '</div>';
+    html += '<input type="file" id="file-input-import" accept="application/json,.json">';
+    html += '</div>';
+
+    if(state.data.items.length === 0){
+      html += '<div class="card"><div class="empty">Noch keine Vokabeln vorhanden.<br>Füge eine Liste hinzu, um loszulegen.</div></div>';
+      return html;
+    }
+    html += '<div class="card">';
+    state.data.items.slice().sort(function(a,b){return (a.de||"").localeCompare(b.de||"","de");}).forEach(function(item){
+      if(state.editingId === item.id){
+        var cfg = vocabConfig(itemType(item));
+        html += '<div class="vlist-item edit-mode" data-edit-id="'+item.id+'">';
+        cfg.keys.forEach(function(k, ki){
+          html += '<div class="verb-field"><label>'+cfg.fieldLabels[ki]+'</label>';
+          html += '<input type="text" class="edit-field" data-key="'+k+'" value="'+escapeHtml(item[k]||"")+'"></div>';
+        });
+        html += '<div class="edit-actions">';
+        html += '<button class="btn btn-primary" data-save-edit="'+item.id+'">Speichern</button>';
+        html += '<button class="btn btn-secondary" data-cancel-edit="1">Abbrechen</button>';
+        html += '</div></div>';
+      } else {
+        html += '<div class="vlist-item">';
+        if(itemType(item) === "verb3"){
+          html += '<div><div class="vlist-words">'+escapeHtml(item.de)+' <span class="en">— '+escapeHtml(item.inf)+' / '+escapeHtml(item.past)+' / '+escapeHtml(item.pp)+'</span></div>';
+        } else {
+          html += '<div><div class="vlist-words">'+escapeHtml(item.de)+' <span class="en">— '+escapeHtml(item.en)+'</span></div>';
+        }
+        html += '<span class="vlist-tag '+item.folder+'">'+(item.folder==="kann"?"Kann ich":"Kann ich nicht")+'</span></div>';
+        html += '<div class="item-actions">';
+        html += '<button class="edit" data-edititem="'+item.id+'">✎</button>';
+        html += '<button class="del" data-delitem="'+item.id+'">×</button>';
+        html += '</div></div>';
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function bindEvents(){
+    var app = document.getElementById("app");
+
+    var authSubmit = document.getElementById("btn-auth-submit");
+    if(authSubmit) authSubmit.addEventListener("click", handleAuthSubmit);
+    var authToggle = document.getElementById("btn-auth-toggle");
+    if(authToggle) authToggle.addEventListener("click", function(){
+      state.authMode = state.authMode === "register" ? "login" : "register";
+      state.authError = null;
+      render();
+    });
+    var authPassField = document.getElementById("auth-password");
+    if(authPassField){
+      authPassField.addEventListener("keydown", function(e){
+        if(e.key === "Enter") handleAuthSubmit();
+      });
+    }
+
+    var navBtn = app.querySelector("[data-nav]");
+    if(navBtn) navBtn.addEventListener("click", function(){ state.view = this.getAttribute("data-nav"); render(); });
+
+    var manageBtn = document.getElementById("btn-manage");
+    if(manageBtn) manageBtn.addEventListener("click", function(){ state.view = "manage"; render(); });
+
+    var capBtn = document.getElementById("btn-capture");
+    if(capBtn) capBtn.addEventListener("click", function(){ state.captureLoading=false; state.view = "capture"; render(); });
+
+    var vocabTypeSeg = document.getElementById("vocab-type-segment");
+    if(vocabTypeSeg) vocabTypeSeg.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){
+        state.vocabType = this.getAttribute("data-vtype");
+        render();
+      });
+    });
+
+    var learnTypeSeg = document.getElementById("learn-type-segment");
+    if(learnTypeSeg) learnTypeSeg.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){
+        state.learnTypeFilter = this.getAttribute("data-ltype");
+        render();
+      });
+    });
+
+    var dirSeg = document.getElementById("dir-segment");
+    if(dirSeg) dirSeg.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){
+        var key = state.learnTypeFilter === "verb3" ? "verb3Direction" : "direction";
+        state.data.settings[key] = this.getAttribute("data-dir");
+        saveData();
+        render();
+      });
+    });
+
+    app.querySelectorAll(".folder-row").forEach(function(row){
+      row.addEventListener("click", function(){
+        var f = this.getAttribute("data-folder");
+        startLearning(f);
+      });
+    });
+
+    var takePhoto = document.getElementById("btn-take-photo");
+    var camInput = document.getElementById("file-input-camera");
+    if(takePhoto && camInput){
+      takePhoto.addEventListener("click", function(){ camInput.click(); });
+      camInput.addEventListener("change", function(e){
+        if(e.target.files && e.target.files[0]) handlePhoto(e.target.files[0]);
+      });
+    }
+    var uploadPhoto = document.getElementById("btn-upload-photo");
+    var uploadInput = document.getElementById("file-input-upload");
+    if(uploadPhoto && uploadInput){
+      uploadPhoto.addEventListener("click", function(){ uploadInput.click(); });
+      uploadInput.addEventListener("change", function(e){
+        if(e.target.files && e.target.files[0]) handlePhoto(e.target.files[0]);
+      });
+    }
+    var manualBtn = document.getElementById("btn-manual");
+    if(manualBtn) manualBtn.addEventListener("click", function(){
+      state.reviewVocabType = state.vocabType;
+      state.reviewRows = [emptyRow(state.vocabType)];
+      state.view = "review";
+      render();
+    });
+
+    var cropModeSeg = document.getElementById("crop-mode-segment");
+    if(cropModeSeg) cropModeSeg.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){
+        state.cropMode = this.getAttribute("data-mode");
+        render();
+      });
+    });
+    var cropLines = app.querySelectorAll(".crop-line");
+    var cropContainer = document.getElementById("crop-container");
+    if(cropLines.length && cropContainer){
+      cropLines.forEach(function(lineEl){
+        lineEl.addEventListener("pointerdown", function(e){
+          dragState.active = true;
+          dragState.splitIdx = parseInt(this.getAttribute("data-split-idx"), 10);
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      });
+      cropContainer.addEventListener("pointerdown", function(e){
+        var rect = cropContainer.getBoundingClientRect();
+        var pct = ((e.clientX - rect.left) / rect.width) * 100;
+        // Zieh die Linie, die dem Klickpunkt am nächsten ist.
+        var bestIdx = 0, bestDist = Infinity;
+        state.cropSplits.forEach(function(sp, i){
+          var d = Math.abs(sp - pct);
+          if(d < bestDist){ bestDist = d; bestIdx = i; }
+        });
+        dragState.active = true;
+        dragState.splitIdx = bestIdx;
+        updateCropSplit(e.clientX);
+        e.preventDefault();
+      });
+    }
+    var cropContinue = document.getElementById("btn-crop-continue");
+    if(cropContinue) cropContinue.addEventListener("click", function(){
+      state.captureLoading = true;
+      state.captureLoadingMsg = "Text wird erkannt …";
+      state.view = "capture";
+      render();
+      if(state.cropMode === "table") runTableOcr();
+      else runListOcr();
+    });
+
+    var addRow = document.getElementById("btn-add-row");
+    if(addRow) addRow.addEventListener("click", function(){
+      state.reviewRows.push(emptyRow(state.reviewVocabType));
+      render();
+    });
+    app.querySelectorAll(".rev-de, .rev-en").forEach(function(inp){
+      inp.addEventListener("input", function(){
+        var idx = parseInt(this.closest(".rowpair").getAttribute("data-idx"),10);
+        if(this.classList.contains("rev-de")) state.reviewRows[idx].de = this.value;
+        else state.reviewRows[idx].en = this.value;
+        this.classList.toggle("warn", !this.value.trim());
+      });
+    });
+    app.querySelectorAll(".rev-field").forEach(function(inp){
+      inp.addEventListener("input", function(){
+        var idx = parseInt(this.closest(".verb-card").getAttribute("data-idx"),10);
+        var key = this.getAttribute("data-key");
+        state.reviewRows[idx][key] = this.value;
+        this.classList.toggle("warn", !this.value.trim());
+      });
+    });
+    app.querySelectorAll("[data-del]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idx = parseInt(this.getAttribute("data-del"),10);
+        state.reviewRows.splice(idx,1);
+        render();
+      });
+    });
+    var saveReview = document.getElementById("btn-save-review");
+    if(saveReview) saveReview.addEventListener("click", saveReviewRows);
+
+    var swapCols = document.getElementById("btn-swap-columns");
+    if(swapCols) swapCols.addEventListener("click", function(){
+      state.reviewRows.forEach(function(r){ var tmp = r.de; r.de = r.en; r.en = tmp; });
+      render();
+    });
+
+    var checkBtn = document.getElementById("btn-check");
+    if(checkBtn) checkBtn.addEventListener("click", checkAnswer);
+    var answerField = document.getElementById("answer-field");
+    if(answerField){
+      answerField.focus();
+      answerField.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+          if(state.currentAnswered){ goNext(); } else { checkAnswer(); }
+        }
+      });
+    }
+
+    var checkVerb3Btn = document.getElementById("btn-check-verb3");
+    if(checkVerb3Btn) checkVerb3Btn.addEventListener("click", checkAnswerVerb3);
+    var verb3Inputs = app.querySelectorAll(".verb3-answer-input");
+    if(verb3Inputs.length){
+      verb3Inputs[0].focus();
+      verb3Inputs.forEach(function(inp, i){
+        inp.addEventListener("keydown", function(e){
+          if(e.key === "Enter"){
+            if(state.currentAnswered){ goNext(); return; }
+            if(i < verb3Inputs.length - 1){ verb3Inputs[i+1].focus(); }
+            else { checkAnswerVerb3(); }
+          }
+        });
+      });
+    }
+
+    var checkVerb3RevBtn = document.getElementById("btn-check-verb3-rev");
+    if(checkVerb3RevBtn) checkVerb3RevBtn.addEventListener("click", checkAnswerVerb3Reverse);
+    var verb3RevField = document.getElementById("answer-field-verb3rev");
+    if(verb3RevField){
+      verb3RevField.focus();
+      verb3RevField.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+          if(state.currentAnswered){ goNext(); } else { checkAnswerVerb3Reverse(); }
+        }
+      });
+    }
+
+    var nextBtn = document.getElementById("btn-next");
+    if(nextBtn) nextBtn.addEventListener("click", goNext);
+
+    var homeBtn = document.getElementById("btn-home");
+    if(homeBtn) homeBtn.addEventListener("click", function(){ state.view="home"; render(); });
+
+    var exportBtn = document.getElementById("btn-export");
+    if(exportBtn) exportBtn.addEventListener("click", exportData);
+
+    var logoutBtn = document.getElementById("btn-logout");
+    if(logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+
+    var importBtn = document.getElementById("btn-import");
+    var importInput = document.getElementById("file-input-import");
+    if(importBtn && importInput){
+      importBtn.addEventListener("click", function(){ importInput.click(); });
+      importInput.addEventListener("change", function(e){
+        if(e.target.files && e.target.files[0]) importData(e.target.files[0]);
+      });
+    }
+
+    app.querySelectorAll("[data-edititem]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.editingId = this.getAttribute("data-edititem");
+        render();
+      });
+    });
+    app.querySelectorAll("[data-cancel-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.editingId = null;
+        render();
+      });
+    });
+    app.querySelectorAll("[data-save-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = this.getAttribute("data-save-edit");
+        var item = state.data.items.find(function(i){ return i.id === id; });
+        if(item){
+          var block = this.closest(".vlist-item.edit-mode");
+          block.querySelectorAll(".edit-field").forEach(function(inp){
+            item[inp.getAttribute("data-key")] = inp.value.trim();
+          });
+          saveData();
+        }
+        state.editingId = null;
+        render();
+      });
+    });
+
+    app.querySelectorAll("[data-delitem]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = this.getAttribute("data-delitem");
+        state.data.items = state.data.items.filter(function(i){ return i.id !== id; });
+        saveData();
+        render();
+      });
+    });
+  }
+
+  // global drag handlers bound once
+  function updateCropSplit(clientX){
+    var container = document.getElementById("crop-container");
+    if(!container) { dragState.active = false; return; }
+    var idx = dragState.splitIdx;
+    var line = container.querySelector('.crop-line[data-split-idx="'+idx+'"]');
+    if(!line) { dragState.active = false; return; }
+    var rect = container.getBoundingClientRect();
+    var pct = ((clientX - rect.left) / rect.width) * 100;
+
+    // Mindestabstand zu Nachbar-Linien und zum Bildrand einhalten, damit
+    // keine Spalte mit Breite 0 (oder negativ) entsteht.
+    var minGap = 5;
+    var lowerBound = idx === 0 ? minGap : state.cropSplits[idx-1] + minGap;
+    var upperBound = idx === state.cropSplits.length-1 ? 100-minGap : state.cropSplits[idx+1] - minGap;
+    pct = Math.max(lowerBound, Math.min(upperBound, pct));
+
+    state.cropSplits[idx] = pct;
+    state.splitPercent = state.cropSplits[0]; // Rückwärtskompatibilität
+    line.style.left = pct + "%";
+  }
+  window.addEventListener("pointermove", function(e){
+    if(dragState.active) updateCropSplit(e.clientX);
+  });
+  window.addEventListener("pointerup", function(){ dragState.active = false; });
+  window.addEventListener("pointercancel", function(){ dragState.active = false; });
+
+  function handlePhoto(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      if(typeof Tesseract === "undefined"){
+        state.reviewVocabType = state.vocabType;
+        state.reviewRows = [emptyRow(state.vocabType)];
+        state.view = "review";
+        render();
+        return;
+      }
+      state.captureImage = reader.result;
+      state.cropMode = "table";
+      state.cropSplits = vocabConfig(state.vocabType).splits.slice();
+      state.splitPercent = state.cropSplits[0];
+      state.view = "crop";
+      render();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function ocrFailFallback(){
+    state.captureLoading = false;
+    state.reviewVocabType = state.vocabType;
+    state.reviewRows = [emptyRow(state.vocabType)];
+    state.view = "review";
+    render();
+  }
+
+  // --- Sprach-Erkennung (Deutsch vs. Englisch) ---------------------------
+  var DE_WORDS = ["der","die","das","und","ist","nicht","ein","eine","einen","einer",
+    "eines","im","zu","von","an","bei","wie","was","wer","wo","wenn","aber","oder",
+    "auch","noch","schon","sehr","viel","viele","gut","kann","muss","wird","haben",
+    "hat","hatte","sein","sich","mit","für","auf","aus","um","durch","gegen","ohne",
+    "unter","über","vor","nach","seit","während","wegen","trotz","ich","du","er","sie",
+    "es","wir","ihr","mein","dein","unser","euer","nein","ja","heute","morgen",
+    "gestern","immer","nie","jetzt","hier","dort","dann","also","weil","dass","damit",
+    "obwohl","werden","würde","können","müssen","sollen","dürfen","mögen","zwischen",
+    "jemand","niemand","etwas","nichts","alle","jede","jeder","jedes"];
+  var EN_WORDS = ["the","and","is","to","of","in","a","an","that","this","with","for",
+    "on","at","by","from","but","not","are","was","were","have","has","will","would",
+    "could","should","can","do","does","did","i","you","he","she","it","we","they",
+    "my","your","his","her","its","our","their","no","yes","today","tomorrow",
+    "yesterday","always","never","now","here","there","then","so","because",
+    "although","if","when","what","who","where","how","someone","nobody","something",
+    "nothing","all","every","each","between","must","may","might"];
+  var DE_WORD_SET = {}, EN_WORD_SET = {};
+  DE_WORDS.forEach(function(w){ DE_WORD_SET[w] = true; });
+  EN_WORDS.forEach(function(w){ EN_WORD_SET[w] = true; });
+
+  function wordDeScore(raw){
+    var w = (raw||"").trim();
+    if(!w) return 0;
+    var lower = w.toLowerCase();
+    var tokens = lower.split(/\s+/);
+    var score = 0;
+    if(/[äöüß]/.test(lower)) score += 3;
+    if(DE_WORD_SET[tokens[0]]) score += 3;
+    tokens.forEach(function(tok){ if(DE_WORD_SET[tok]) score += 1; });
+    if(/(ung|heit|keit|schaft|chen|lein)$/.test(lower)) score += 2;
+    if(/^zu [a-zäöü]+$/.test(lower)) score += 2; // "zu gehen" etc.
+    // Deutsche Substantive werden großgeschrieben - hilfreiches Signal bei
+    // reinen Inhaltswörtern (z.B. "Haus" vs. "house"), wenn kein Funktions-
+    // wort getroffen hat.
+    if(tokens.length === 1 && /^[A-ZÄÖÜ][a-zäöüß-]+$/.test(w)) score += 1.3;
+    return score;
+  }
+
+  function wordEnScore(raw){
+    var w = (raw||"").trim();
+    if(!w) return 0;
+    var lower = w.toLowerCase();
+    var tokens = lower.split(/\s+/);
+    var score = 0;
+    if(EN_WORD_SET[tokens[0]]) score += 3;
+    tokens.forEach(function(tok){ if(EN_WORD_SET[tok]) score += 1; });
+    if(/^to [a-z]+$/.test(lower)) score += 3; // "to go" etc.
+    if(!/[äöüß]/.test(lower) && /(tion|sion|ness|ful|ity|ous|ing)$/.test(lower)) score += 2;
+    return score;
+  }
+
+  var HEADER_WORDS = ["deutsch","englisch","english","german","translation",
+    "übersetzung","wort","wörter","word","words","vocab","vocabulary","vokabel",
+    "vokabeln","vokabular","de","en","deu","dt","dt.","engl","engl.",
+    "infinitiv","infinitive","simple past","past","past participle",
+    "partizip","partizip ii","partizip 2","pp","verb","verben","tense","tenses",
+    "zeitform","zeitformen","präsens","present"];
+
+  // Erkennt auch leicht abgeschnittene Kopfzeilen-Wörter, z.B. wenn der
+  // Spalten-Zuschnitt das erste Zeichen mit erwischt hat ("erman" statt
+  // "German", "nglish" statt "English").
+  function isHeaderWord(v){
+    var vl = (v||"").trim().toLowerCase();
+    if(!vl) return false;
+    if(HEADER_WORDS.indexOf(vl) !== -1) return true;
+    return HEADER_WORDS.some(function(hw){
+      return hw.length >= 4 && (vl === hw.slice(1) || vl === hw.slice(0, -1));
+    });
+  }
+
+  function isHeaderRow(row){
+    var de = (row.de||"").trim().toLowerCase();
+    var en = (row.en||"").trim().toLowerCase();
+    return isHeaderWord(de) && isHeaderWord(en);
+  }
+
+  // Generische Variante für beliebig viele Spalten (z.B. 4 bei Verben mit
+  // 3 Zeitformen): eine Zeile gilt als Kopfzeile, wenn ALLE nicht-leeren
+  // Werte Kopfzeilen-Wörter sind.
+  function isHeaderRowValues(values){
+    var nonEmpty = values.filter(function(v){ return (v||"").trim(); });
+    if(nonEmpty.length < 2) return false;
+    var matchCount = nonEmpty.filter(isHeaderWord).length;
+    // Toleriert einen einzelnen Ausreißer (z.B. eine Spalte, die durch eine
+    // leichte Fehlzuordnung nicht exakt das Kopfzeilen-Wort enthält).
+    return matchCount >= nonEmpty.length - 1 && matchCount >= 2;
+  }
+
+  function filterHeaderValueRows(rows){
+    return rows.filter(function(r){ return !isHeaderRowValues(r.values); });
+  }
+
+  function objectifyRows(rows, keys){
+    return rows.map(function(r){
+      var obj = {};
+      keys.forEach(function(k, i){ obj[k] = cleanVocabCell(r.values[i] || ""); });
+      obj._y = r.y;
+      return obj;
+    });
+  }
+
+  // Entfernt typische Störsignale aus Wörterbuch-Tabellen, die sonst als
+  // Teil der Vokabel gespeichert würden: Fußnoten-Sternchen ("bet*",
+  // "burn***") und britische/amerikanische Varianten-Kürzel ("AE"/"BE").
+  function cleanVocabCell(raw){
+    var s = (raw||"").trim();
+    s = s.replace(/\s*\*+\s*$/, "");
+    // Nur entfernen, wenn danach noch Inhalt übrig bleibt - sonst würde z.B.
+    // das Verb "be" selbst als "BE"-Dialektkürzel fehlerkannt und gelöscht.
+    var withoutTag = s.replace(/\s*\(?\b(AE|BE)\b\)?\s*$/i, "").trim();
+    if(withoutTag) s = withoutTag;
+    return s.trim();
+  }
+
+  // Bei Verben mit 3 Zeitformen kann die deutsche Spalte an beliebiger
+  // Position stehen (z.B. zuerst oder zuletzt). Diese Funktion erkennt
+  // automatisch, welche der Spalten Deutsch ist (per Sprach-Erkennung über
+  // alle Zeilen hinweg), und ordnet die restlichen 3 Spalten - in ihrer
+  // ursprünglichen Reihenfolge - als Infinitiv/Simple Past/Partizip II ein.
+  function reorderVerb3Columns(rows){
+    if(!rows.length || rows[0].values.length !== 4) return rows;
+    var colCount = rows[0].values.length;
+    var scores = new Array(colCount).fill(0);
+    rows.forEach(function(r){
+      for(var c=0;c<colCount;c++){
+        scores[c] += wordDeScore(r.values[c]) - wordEnScore(r.values[c]);
+      }
+    });
+    var deIdx = 0, bestScore = -Infinity;
+    scores.forEach(function(s,i){ if(s > bestScore){ bestScore = s; deIdx = i; } });
+    return rows.map(function(r){
+      var rest = r.values.filter(function(_, i){ return i !== deIdx; });
+      return { values: [r.values[deIdx]].concat(rest), y: r.y };
+    });
+  }
+
+  // Fallback ohne Positionsdaten: rein indexbasiertes Zusammenfügen über
+  // beliebig viele Spalten.
+  function zipColumnsIndexBased(columnsOfLines){
+    var n = 0;
+    columnsOfLines.forEach(function(arr){ n = Math.max(n, arr.length); });
+    var rows = [];
+    for(var i=0;i<n;i++){
+      var vals = columnsOfLines.map(function(arr){ return arr[i] || ""; });
+      if(vals.some(function(v){ return v; })) rows.push(vals);
+    }
+    return rows;
+  }
+
+  // Prüft für eine Liste von Wortpaaren, ob die Spalten vertauscht sind
+  // (also rechts eigentlich Deutsch und links eigentlich Englisch ist),
+  // und tauscht sie in diesem Fall automatisch. Entfernt außerdem reine
+  // Kopfzeilen wie "Deutsch | Englisch", die versehentlich mit erkannt wurden.
+  function autoOrderRows(rows){
+    if(!rows || rows.length === 0) return rows;
+    rows = rows.filter(function(r){ return !isHeaderRow(r); });
+    if(rows.length === 0) return rows;
+    var leftNet = 0, rightNet = 0;
+    rows.forEach(function(r){
+      leftNet += wordDeScore(r.de) - wordEnScore(r.de);
+      rightNet += wordDeScore(r.en) - wordEnScore(r.en);
+    });
+    var swapped = rightNet - leftNet > 1.5;
+    if(swapped){
+      rows.forEach(function(r){ var tmp = r.de; r.de = r.en; r.en = tmp; });
+    }
+    rows.swapped = swapped;
+    return rows;
+  }
+
+  function cleanLines(text){
+    return text.split(/\r?\n/)
+      .map(function(l){ return l.trim(); })
+      .filter(function(l){
+        if(!l) return false;
+        if(!/[A-Za-zÄÖÜäöüß]/.test(l)) return false; // drop artifact-only lines (digits, bars, symbols)
+        return true;
+      });
+  }
+
+  // Fallback: rein indexbasiertes Zusammenfügen (wird nur genutzt, falls
+  // keine Positionsdaten von Tesseract vorliegen).
+  function zipLines(leftLines, rightLines){
+    var n = Math.max(leftLines.length, rightLines.length);
+    var rows = [];
+    for(var i=0;i<n;i++){
+      var de = leftLines[i] || "";
+      var en = rightLines[i] || "";
+      if(de || en) rows.push({de:de, en:en});
+    }
+    return rows;
+  }
+
+  // Extrahiert Zeilen inkl. vertikaler Position (Bounding-Box) aus einem
+  // Tesseract-Ergebnis. So lässt sich später anhand der tatsächlichen Höhe
+  // im Bild zuordnen, welche deutsche Zeile zu welcher englischen gehört -
+  // statt sich blind auf die Reihenfolge zu verlassen.
+  function extractPositionedLines(ocrResult, normHeight){
+    var rawLines = (ocrResult && ocrResult.data && ocrResult.data.lines) ? ocrResult.data.lines : null;
+    if(!rawLines || !rawLines.length) return null;
+    var out = [];
+    rawLines.forEach(function(l){
+      var text = (l.text || "").trim();
+      if(!text) return;
+      if(!/[A-Za-zÄÖÜäöüß]/.test(text)) return;
+      if(!l.bbox) return;
+      var yCenter = (l.bbox.y0 + l.bbox.y1) / 2;
+      var height = Math.max(1, l.bbox.y1 - l.bbox.y0);
+      // Jede Spalte kann unterschiedlich stark hochskaliert worden sein
+      // (regionToDataURL), je nachdem wie schmal sie ursprünglich war.
+      // Ohne Normalisierung wären die Pixel-Y-Werte zwischen Spalten nicht
+      // vergleichbar, was zu einer schleichenden Fehlzuordnung über die
+      // Zeilen hinweg führt. Wir rechnen daher auf den Anteil der
+      // (skalierten) Bildhöhe um, was wieder dem Anteil der ORIGINAL-
+      // Bildhöhe entspricht - und damit über alle Spalten hinweg konsistent
+      // vergleichbar ist.
+      if(normHeight){
+        yCenter = yCenter / normHeight;
+        height = height / normHeight;
+      }
+      out.push({ text: text, y: yCenter, height: height });
+    });
+    if(!out.length) return null;
+    out.sort(function(a,b){ return a.y - b.y; });
+    return out;
+  }
+
+  // HINWEIS: Ein früherer Versuch, auf zwei Zeilen umgebrochene Übersetzungen
+  // (z.B. "biro/ball" + "pen") automatisch wieder zusammenzuführen, hat sich
+  // in der Praxis als zu unzuverlässig erwiesen: bei eng gedruckten Listen
+  // wurden dadurch fälschlich echte, separate Zeilen verschmolzen (z.B.
+  // "vorne" + "hinten" zu "in front behind"). Der seltene Umbruch-Fall lässt
+  // sich stattdessen bequem über die rot markierten Felder im
+  // Prüfen-Bildschirm von Hand korrigieren - das ist deutlich sicherer als
+  // eine Heuristik, die bei jeder Tabelle anders "danebenraten" kann.
+
+  function averageHeight(lines){
+    if(!lines.length) return 0.03;
+    var sum = 0;
+    lines.forEach(function(l){ sum += l.height; });
+    return sum / lines.length;
+  }
+
+  // Fallback, falls eine Spalte keine brauchbaren Positionsdaten liefert
+  // (z.B. weil Tesseract für diese Spalte keine bbox-Werte zurückgibt).
+  // Verteilt die erkannten Zeilen gleichmäßig über die Bildhöhe, damit sie
+  // trotzdem an der ungefähr richtigen Stelle einsortiert werden, statt die
+  // Positions-Zuordnung für die GESAMTE Tabelle aufzugeben.
+  function interpolatePositions(lines){
+    var n = lines.length;
+    if(n === 0) return [];
+    return lines.map(function(t, i){
+      return { text: t, y: (i + 0.5) / n, height: 1 / n };
+    });
+  }
+
+  // Ordnet zwei Spalten anhand ihrer vertikalen Position einander zu.
+  // WICHTIG: Beide Spalten sind von oben nach unten sortiert. Statt bei
+  // jeder Zeile stur die insgesamt nächstgelegene (noch freie) Zeile aus der
+  // anderen Spalte zu suchen - was bei einer verrutschten Zeile zu einem
+  // "Sprung" führen und nachfolgende Zeilen falsch zuordnen kann - läuft
+  // diese Version wie ein Reißverschluss strikt in Lesereihenfolge durch
+  // beide Spalten. Das ist deutlich robuster, u.a. wenn eine englische
+  // Übersetzung im Bild auf zwei Zeilen umbricht oder eine Zeile in einer
+  // Spalte fälschlich übersehen/zusätzlich erkannt wurde: nur die
+  // betroffene Stelle bleibt unvollständig, alles andere bleibt synchron.
+  function alignTwoColumns(baseRows, colLines, colIndex){
+    var avgH = averageHeight(baseRows.map(function(r){ return {height:r.h}; }).concat(colLines));
+    var tolerance = Math.max(avgH * 0.85, 0.012);
+    var result = [];
+    var ri = 0, ci = 0;
+
+    while(ri < baseRows.length && ci < colLines.length){
+      var row = baseRows[ri], cl = colLines[ci];
+      var dist = cl.y - row.y;
+      if(Math.abs(dist) <= tolerance){
+        row.values.push(cl.text);
+        row.y = (row.y + cl.y) / 2;
+        row.h = (row.h + cl.height) / 2;
+        result.push(row);
+        ri++; ci++;
+      } else if(dist < 0){
+        // Die neue Zeile liegt deutlich VOR der aktuellen Basis-Zeile ->
+        // eigener Eintrag ohne Gegenstück in den bisherigen Spalten.
+        var vals = new Array(colIndex).fill("");
+        vals.push(cl.text);
+        result.push({ values: vals, y: cl.y, h: cl.height });
+        ci++;
+      } else {
+        // Die Basis-Zeile hat (bisher) kein Gegenstück in dieser Spalte.
+        row.values.push("");
+        result.push(row);
+        ri++;
+      }
+    }
+    while(ri < baseRows.length){ baseRows[ri].values.push(""); result.push(baseRows[ri]); ri++; }
+    while(ci < colLines.length){
+      var vals2 = new Array(colIndex).fill("");
+      vals2.push(colLines[ci].text);
+      result.push({ values: vals2, y: colLines[ci].y, h: colLines[ci].height });
+      ci++;
+    }
+    result.sort(function(a,b){ return a.y - b.y; });
+    return result;
+  }
+
+  // Verallgemeinerte Version für beliebig viele Spalten (z.B. 4 bei Verben
+  // mit 3 Zeitformen). "columns" ist ein Array von Zeilen-Arrays (je
+  // Spalte), jeweils mit {text,y,height}. Rückgabe: Array von Werte-Arrays.
+  function mergeColumnsByPosition(columns){
+    if(!columns.length) return [];
+    var rows = columns[0].map(function(l){ return { values: [l.text], y: l.y, h: l.height }; });
+    for(var c=1; c<columns.length; c++){
+      rows = alignTwoColumns(rows, columns[c], c);
+    }
+    return rows;
+  }
+
+  // Schneidet einen Bildbereich aus und skaliert ihn bei Bedarf hoch.
+  // Sehr kleine Fotos/Ausschnitte (z.B. schmale Spalten) liefern sonst
+  // deutlich schlechtere OCR-Ergebnisse.
+  function regionToDataURL(img, sx, sy, sw, sh, minWidth){
+    minWidth = minWidth || 700;
+    var scale = sw < minWidth ? (minWidth / sw) : 1;
+    var destW = Math.max(1, Math.round(sw * scale));
+    var destH = Math.max(1, Math.round(sh * scale));
+    var canvas = document.createElement("canvas");
+    canvas.width = destW; canvas.height = destH;
+    var ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    if("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, destW, destH);
+    return { url: canvas.toDataURL("image/png"), destH: destH };
+  }
+
+  // Zweiter, gezielter Erkennungsversuch NUR für Zeilen, bei denen ein Wort
+  // fehlt: schneidet einen schmalen Streifen genau um diese eine Zeile aus
+  // und erkennt ihn im Einzelzeilen-Modus (PSM 7) neu. Das ist präziser als
+  // der erste Durchlauf, der die ganze Spalte auf einmal liest, und rettet
+  // damit oft Wörter, die beim ersten Versuch übersehen wurden.
+  function retryMissingPairCells(img, rows, colBounds, wasSwapped){
+    var h = img.naturalHeight;
+    var tasks = [];
+    rows.forEach(function(row, idx){
+      ["de","en"].forEach(function(field){
+        if((row[field]||"").trim()) return; // nicht fehlend
+        if(row._y === undefined || row._y === null) return;
+        var isDe = field === "de";
+        var colIdx = wasSwapped ? (isDe ? 1 : 0) : (isDe ? 0 : 1);
+        var bounds = colBounds[colIdx];
+        if(!bounds) return;
+
+        var prevY = idx > 0 ? rows[idx-1]._y : null;
+        var nextY = idx < rows.length-1 ? rows[idx+1]._y : null;
+        var gaps = [];
+        if(prevY != null) gaps.push(row._y - prevY);
+        if(nextY != null) gaps.push(nextY - row._y);
+        var localGap = gaps.length ? (gaps[0] + (gaps[1]||gaps[0])) / (gaps[1]!=null?2:1) : 0.06;
+        var halfBand = Math.max(localGap * 0.6, 0.015);
+
+        tasks.push({
+          idx: idx, field: field, colIdx: colIdx,
+          y0: Math.max(0, Math.round((row._y - halfBand) * h)),
+          y1: Math.min(h, Math.round((row._y + halfBand) * h))
+        });
+      });
+    });
+
+    if(!tasks.length) return Promise.resolve();
+
+    var promises = tasks.map(function(t){
+      var bounds = colBounds[t.colIdx];
+      var sh = Math.max(1, t.y1 - t.y0);
+      var region = regionToDataURL(img, bounds.sx, t.y0, bounds.sw, sh, 500);
+      return Tesseract.recognize(region.url, "deu+eng", { tessedit_pageseg_mode: "7" });
+    });
+
+    return Promise.all(promises).then(function(results){
+      results.forEach(function(res, i){
+        var t = tasks[i];
+        var text = (res && res.data && res.data.text) ? res.data.text : "";
+        var lines = cleanLines(text);
+        var value = lines.length ? cleanVocabCell(lines.join(" ")) : "";
+        if(value) rows[t.idx][t.field] = value;
+      });
+    });
+  }
+
+  function runTableOcr(){
+    var img = new Image();
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var cfg = vocabConfig(state.vocabType);
+      var margin = Math.max(2, Math.round(w * 0.012));
+      var boundariesPct = [0].concat(state.cropSplits).concat([100]);
+      var colCount = cfg.keys.length;
+      var ocrOptions = { tessedit_pageseg_mode: "4" };
+
+      var promises = [];
+      var destHeights = [];
+      var colBounds = [];
+      for(var i=0; i<colCount; i++){
+        var sxRaw = Math.round(w * boundariesPct[i] / 100);
+        var exRaw = Math.round(w * boundariesPct[i+1] / 100);
+        var sx = i === 0 ? 0 : sxRaw + margin;
+        var ex = i === colCount-1 ? w : exRaw - margin;
+        var sw = Math.max(1, ex - sx);
+        colBounds.push({ sx: sx, sw: sw });
+        // Wichtig: schmale, einspaltige Ausschnitte werden von Tesseract im
+        // Standardmodus ("ein einzelner Textblock") oft komplett falsch
+        // gelesen. Der Modus "einspaltiger Text" (PSM 4) liefert hier
+        // zuverlässige Ergebnisse. Zusätzlich werden kleine Ausschnitte
+        // hochskaliert, da niedrige Auflösung die Erkennung verschlechtert.
+        var region = regionToDataURL(img, sx, 0, sw, h, 700);
+        destHeights.push(region.destH);
+        promises.push(Tesseract.recognize(region.url, "deu+eng", ocrOptions));
+      }
+
+      Promise.all(promises).then(function(results){
+        var positionedCols = results.map(function(r, i){
+          var pos = extractPositionedLines(r, destHeights[i]);
+          if(pos) return pos;
+          // Diese eine Spalte hat keine brauchbaren Positionsdaten geliefert
+          // (selten, z.B. bei sehr unscharfem Text). Statt deswegen die
+          // Positions-Zuordnung für die GESAMTE Tabelle aufzugeben, werden
+          // ihre Zeilen gleichmäßig über die Höhe verteilt und können so
+          // weiterhin an der richtigen Stelle einsortiert werden.
+          return interpolatePositions(cleanLines(r.data.text || ""));
+        });
+        var mergedRows = mergeColumnsByPosition(positionedCols);
+        mergedRows = filterHeaderValueRows(mergedRows);
+        if(state.vocabType === "verb3") mergedRows = reorderVerb3Columns(mergedRows);
+        var rows = objectifyRows(mergedRows, cfg.keys);
+
+        function finish(){
+          rows.forEach(function(r){ delete r._y; });
+          state.captureLoading = false;
+          state.reviewVocabType = state.vocabType;
+          state.reviewRows = rows.length ? rows : [emptyRow(state.vocabType)];
+          state.view = "review";
+          render();
+        }
+
+        if(state.vocabType === "pair"){
+          rows = autoOrderRows(rows);
+          var wasSwapped = !!rows.swapped;
+          var hasMissing = rows.some(function(r){ return !(r.de||"").trim() || !(r.en||"").trim(); });
+          if(hasMissing){
+            state.captureLoadingMsg = "Fehlende Wörter werden erneut geprüft …";
+            render();
+            retryMissingPairCells(img, rows, colBounds, wasSwapped).then(finish).catch(finish);
+            return;
+          }
+        }
+        finish();
+      }).catch(ocrFailFallback);
+    };
+    img.onerror = ocrFailFallback;
+    img.src = state.captureImage;
+  }
+
+  function runListOcr(){
+    var img = new Image();
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var cfg = vocabConfig(state.vocabType);
+      var region = regionToDataURL(img, 0, 0, w, h, 1000);
+      // PSM 6 (einzelner Textblock) passt für eine ganze Liste/Seite mit
+      // mehreren Zeilen gut - anders als bei schmalen Einzelspalten oben.
+      Tesseract.recognize(region.url, "deu+eng", { tessedit_pageseg_mode: "6" })
+        .then(function(result){
+          var text = (result && result.data && result.data.text) ? result.data.text : "";
+          var wrapped = parseOcrTextMulti(text, cfg.keys).map(function(vals, i){ return { values: vals, y: i }; });
+          var valueRows = filterHeaderValueRows(wrapped);
+          if(state.vocabType === "verb3") valueRows = reorderVerb3Columns(valueRows);
+          var rows = objectifyRows(valueRows, cfg.keys);
+          rows.forEach(function(r){ delete r._y; });
+          if(state.vocabType === "pair") rows = autoOrderRows(rows);
+
+          state.captureLoading = false;
+          state.reviewVocabType = state.vocabType;
+          state.reviewRows = rows.length ? rows : [emptyRow(state.vocabType)];
+          state.view = "review";
+          render();
+        })
+        .catch(ocrFailFallback);
+    };
+    img.onerror = ocrFailFallback;
+    img.src = state.captureImage;
+  }
+
+  function parseOcrTextMulti(text, keys){
+    var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+    var rows = [];
+    lines.forEach(function(line){
+      var parts = null;
+      if(line.indexOf("\t") !== -1){
+        parts = line.split("\t");
+      } else if(/ [-–—] /.test(line)){
+        parts = line.split(/ [-–—] /);
+      } else if(line.indexOf("|") !== -1){
+        parts = line.split("|");
+      } else if(keys.length === 2 && line.indexOf(":") !== -1){
+        parts = line.split(":");
+      } else if(keys.length === 2 && line.indexOf("=") !== -1){
+        parts = line.split("=");
+      } else if(/ {2,}/.test(line)){
+        parts = line.split(/ {2,}/);
+      }
+      if(parts){
+        parts = parts.map(function(p){ return p.trim(); }).filter(function(p){ return p.length > 0; });
+      }
+      if(parts && parts.length >= 2){
+        var vals = keys.map(function(k, i){ return parts[i] || ""; });
+        if(vals[0] && vals[1]) rows.push(vals);
+      } else if(keys.length === 2 && line.length > 1){
+        rows.push([line, ""]);
+      }
+    });
+    return rows;
+  }
+
+  function saveReviewRows(){
+    var type = state.reviewVocabType;
+    var cfg = vocabConfig(type);
+    var completeItems = [];
+    var incompleteCount = 0;
+
+    state.reviewRows.forEach(function(row){
+      var vals = {};
+      cfg.keys.forEach(function(k){ vals[k] = (row[k]||"").trim(); });
+      var isComplete = cfg.keys.every(function(k){ return vals[k]; });
+      var hasAnyContent = cfg.keys.some(function(k){ return vals[k]; });
+      if(isComplete){
+        var item = { id: uid(), type: type, folder: "nicht", streak: 0 };
+        cfg.keys.forEach(function(k){ item[k] = vals[k]; });
+        completeItems.push(item);
+      } else if(hasAnyContent){
+        incompleteCount++;
+      }
+    });
+
+    // Kontrollprüfung: unvollständige Zeilen (rot markiert, z.B. weil die
+    // Texterkennung ein Wort nicht gefunden hat) werden NICHT stillschweigend
+    // verworfen. Stattdessen wird nachgefragt, damit nichts verloren geht.
+    if(incompleteCount > 0){
+      var msg = incompleteCount + (incompleteCount===1 ? " Zeile ist" : " Zeilen sind") +
+        " unvollständig (rot markiert) und würde" + (incompleteCount===1 ? "" : "n") +
+        " beim Speichern übersprungen. Zurück und ergänzen? Zum trotzdem Speichern auf Abbrechen tippen.";
+      var goBackAndFix = confirm(msg);
+      if(goBackAndFix) return; // auf dem Review-Screen bleiben, damit ergänzt werden kann
+    }
+
+    completeItems.forEach(function(item){ state.data.items.push(item); });
+    saveData();
+    state.view = "home";
+    render();
+  }
+
+  // Export als Datei, damit die Vokabeln auf einem anderen Gerät (z.B.
+  // Tablet) wieder eingelesen werden können - unabhängig davon, ob die App
+  // dort als Datei geöffnet oder als Artefakt genutzt wird.
+  function exportData(){
+    try{
+      var json = JSON.stringify(state.data, null, 2);
+      var blob = new Blob([json], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var stamp = new Date().toISOString().slice(0,10);
+      a.href = url;
+      a.download = "vokabeltrainer-backup-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    }catch(e){
+      alert("Export fehlgeschlagen. Bitte versuche es erneut.");
+    }
+  }
+
+  function importData(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var parsed = JSON.parse(reader.result);
+        if(!parsed || !Array.isArray(parsed.items)){
+          alert("Diese Datei sieht nicht wie eine Vokabeltrainer-Sicherung aus.");
+          return;
+        }
+        var existingIds = {};
+        state.data.items.forEach(function(i){ existingIds[i.id] = true; });
+        var addedPair = 0, addedVerb3 = 0;
+        parsed.items.forEach(function(item){
+          if(!item || !item.id || existingIds[item.id]) return;
+          state.data.items.push(item);
+          if(itemType(item) === "verb3") addedVerb3++; else addedPair++;
+        });
+        saveData();
+        render();
+        var added = addedPair + addedVerb3;
+        var detail = added > 0 ? " (" + addedPair + " normale, " + addedVerb3 + " mit 3 Zeitformen)" : "";
+        alert(added + " Vokabel" + (added===1?"":"n") + " importiert" + detail + ".");
+      }catch(e){
+        alert("Datei konnte nicht gelesen werden. Ist es eine gültige Sicherungsdatei?");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function startLearning(folder){
+    var pool = itemsIn(folder, state.learnTypeFilter);
+    if(pool.length === 0) return;
+    var dir = state.learnTypeFilter === "verb3" ? state.data.settings.verb3Direction : state.data.settings.direction;
+
+    var queue = shuffle(pool).map(function(item){
+      return { item: item, dir: dir };
+    });
+
+    state.learnFolder = folder;
+    state.learnQueue = queue;
+    state.learnIndex = 0;
+    state.learnStats = { correct: 0, wrong: 0 };
+    state.currentAnswered = false;
+    state.lastCorrect = null;
+    state.verb3FieldCorrect = null;
+    state.verb3GivenAnswers = null;
+    state.view = "learn";
+    render();
+  }
+
+  // Eine Vokabel wandert erst nach "Kann ich", wenn sie sowohl in
+  // Deutsch->Englisch ALS AUCH in Englisch->Deutsch schon einmal richtig
+  // beantwortet wurde (statt wie vorher: zweimal hintereinander in der
+  // gleichen Richtung). Ein Fehler in einer der beiden Richtungen setzt
+  // beide Fortschritte zurück und schickt die Vokabel zurück nach
+  // "Kann ich nicht".
+  function applyResultToItem(itemId, dir, isCorrect){
+    var item = state.data.items.find(function(i){ return i.id === itemId; });
+    if(item){
+      if(isCorrect){
+        if(dir === "de-en") item.correctDeEn = true;
+        else item.correctEnDe = true;
+        if(item.correctDeEn && item.correctEnDe){ item.folder = "kann"; }
+      } else {
+        item.correctDeEn = false;
+        item.correctEnDe = false;
+        item.folder = "nicht";
+      }
+    }
+    saveData();
+  }
+
+  function checkAnswer(){
+    var field = document.getElementById("answer-field");
+    var current = state.learnQueue[state.learnIndex];
+    var given = field ? field.value : "";
+    var correctAnswer = current.dir === "de-en" ? current.item.en : current.item.de;
+    var isCorrect = answerMatches(given, correctAnswer);
+
+    applyResultToItem(current.item.id, current.dir, isCorrect);
+
+    state.learnStats[isCorrect ? "correct" : "wrong"]++;
+    state.currentAnswered = true;
+    state.lastCorrect = isCorrect;
+    render();
+  }
+
+  function checkAnswerVerb3(){
+    var current = state.learnQueue[state.learnIndex];
+    var item = current.item;
+    var inputs = document.querySelectorAll(".verb3-answer-input");
+    var given = {};
+    inputs.forEach(function(inp){ given[inp.getAttribute("data-vkey")] = inp.value; });
+
+    var fieldCorrect = {
+      inf: answerMatches(given.inf, item.inf),
+      past: answerMatches(given.past, item.past),
+      pp: answerMatches(given.pp, item.pp)
+    };
+    var allCorrect = fieldCorrect.inf && fieldCorrect.past && fieldCorrect.pp;
+
+    applyResultToItem(item.id, current.dir, allCorrect);
+
+    state.learnStats[allCorrect ? "correct" : "wrong"]++;
+    state.currentAnswered = true;
+    state.lastCorrect = allCorrect;
+    state.verb3FieldCorrect = fieldCorrect;
+    state.verb3GivenAnswers = given;
+    render();
+  }
+
+  function checkAnswerVerb3Reverse(){
+    var current = state.learnQueue[state.learnIndex];
+    var item = current.item;
+    var field = document.getElementById("answer-field-verb3rev");
+    var given = field ? field.value : "";
+    var isCorrect = answerMatches(given, item.de);
+
+    applyResultToItem(item.id, current.dir, isCorrect);
+
+    state.learnStats[isCorrect ? "correct" : "wrong"]++;
+    state.currentAnswered = true;
+    state.lastCorrect = isCorrect;
+    render();
+  }
+
+  function goNext(){
+    state.learnIndex++;
+    state.currentAnswered = false;
+    state.lastCorrect = null;
+    state.verb3FieldCorrect = null;
+    state.verb3GivenAnswers = null;
+    render();
+  }
+
+  // --- Cloud-Anmeldung (Firebase) -----------------------------------------
+  function translateAuthError(err){
+    var code = err && err.code;
+    var map = {
+      "auth/email-already-in-use": "Diese E-Mail ist bereits registriert.",
+      "auth/invalid-email": "Ungültige E-Mail-Adresse.",
+      "auth/weak-password": "Das Passwort muss mindestens 6 Zeichen haben.",
+      "auth/user-not-found": "Kein Konto mit dieser E-Mail gefunden.",
+      "auth/wrong-password": "Falsches Passwort.",
+      "auth/invalid-credential": "E-Mail oder Passwort falsch.",
+      "auth/too-many-requests": "Zu viele Versuche. Bitte kurz warten."
+    };
+    return (code && map[code]) || "Etwas ist schiefgelaufen. Bitte erneut versuchen.";
+  }
+
+  function handleAuthSubmit(){
+    var email = (document.getElementById("auth-email")||{}).value || "";
+    var pass = (document.getElementById("auth-password")||{}).value || "";
+    email = email.trim();
+    if(!email || !pass){
+      state.authError = "Bitte E-Mail und Passwort eingeben.";
+      render();
+      return;
+    }
+    state.authError = null;
+    var authAction = state.authMode === "register"
+      ? firebase.auth().createUserWithEmailAndPassword(email, pass)
+      : firebase.auth().signInWithEmailAndPassword(email, pass);
+    // Erfolgreiche Anmeldung wird über onAuthStateChanged() unten behandelt.
+    authAction.catch(function(err){
+      state.authError = translateAuthError(err);
+      render();
+    });
+  }
+
+  function handleLogout(){
+    if(state.cloudEnabled && typeof firebase !== "undefined"){
+      firebase.auth().signOut();
+    }
+  }
+
+  if(CLOUD_CONFIGURED && typeof firebase !== "undefined"){
+    state.cloudEnabled = true;
+    state.view = "loading";
+    render();
+    firebase.initializeApp(firebaseConfig);
+    firebase.auth().onAuthStateChanged(function(user){
+      state.authError = null;
+      if(user){
+        state.authUser = user;
+        loadData().then(function(){
+          if(state.view === "loading" || state.view === "login") state.view = "home";
+          render();
+        });
+      } else {
+        state.authUser = null;
+        state.view = "login";
+        render();
+      }
+    });
+  } else {
+    loadData().then(render);
+  }
+})();
+</script>
+</body>
+</html>
