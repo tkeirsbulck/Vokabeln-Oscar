@@ -263,6 +263,8 @@
     reviewVocabType: "pair",
     learnTypeFilter: "pair",
     editingId: null,
+    manageTypeFilter: "pair",
+    editFolder: null,
     cloudEnabled: false,
     authUser: null,
     authMode: "login",
@@ -785,7 +787,7 @@
     html += '<div class="stat ok"><div class="n">'+s.correct+'</div><div class="l">richtig</div></div>';
     html += '<div class="stat no"><div class="n">'+s.wrong+'</div><div class="l">falsch</div></div>';
     html += '</div>';
-    html += '<p class="hint">Nach der ersten richtig beantworteten Richtung wandert eine Vokabel nach „Kann ich fast" - dort wird dann gezielt nur noch die fehlende Richtung abgefragt. Erst wenn auch diese richtig war, geht es weiter nach „Kann ich". Bei einem Fehler geht es zurück nach „Kann ich nicht".</p>';
+    html += '<p class="hint">Nach der ersten richtig beantworteten Richtung wandert eine Vokabel nach „Kann ich fast" - dort wird gezielt nur noch die fehlende Richtung abgefragt. Ein Fehler betrifft dabei immer nur die gerade abgefragte Richtung: die andere, bereits erledigte Richtung bleibt erhalten. Erst wenn beide Richtungen richtig sind, geht es weiter nach „Kann ich".</p>';
     html += '<button class="btn btn-primary" id="btn-home">Zur Übersicht</button>';
     return html;
   }
@@ -816,15 +818,43 @@
       html += '<div class="card"><div class="empty">Noch keine Vokabeln vorhanden.<br>Füge eine Liste hinzu, um loszulegen.</div></div>';
       return html;
     }
+
     html += '<div class="card">';
-    state.data.items.slice().sort(function(a,b){return (a.de||"").localeCompare(b.de||"","de");}).forEach(function(item){
+    html += '<span class="label">Welche Vokabeln bearbeiten?</span>';
+    html += '<div class="segmented" id="manage-type-segment">';
+    html += '<button data-mtype="pair" class="'+(state.manageTypeFilter==="pair"?"active":"")+'">Normale Vokabeln</button>';
+    html += '<button data-mtype="verb3" class="'+(state.manageTypeFilter==="verb3"?"active":"")+'">3 Zeitformen</button>';
+    html += '</div>';
+    html += '</div>';
+
+    var visibleItems = state.data.items.filter(function(i){ return itemType(i) === state.manageTypeFilter; });
+    if(visibleItems.length === 0){
+      html += '<div class="card"><div class="empty">Keine '+(state.manageTypeFilter==="verb3"?"Verben mit 3 Zeitformen":"normalen Vokabeln")+' vorhanden.</div></div>';
+      return html;
+    }
+
+    var FOLDER_OPTIONS = [
+      { id: "nicht", label: "Kann ich nicht" },
+      { id: "fast", label: "Kann ich fast" },
+      { id: "kann", label: "Kann ich" }
+    ];
+
+    html += '<div class="card">';
+    visibleItems.slice().sort(function(a,b){return (a.de||"").localeCompare(b.de||"","de");}).forEach(function(item){
       if(state.editingId === item.id){
         var cfg = vocabConfig(itemType(item));
+        var activeFolder = state.editFolder || item.folder;
         html += '<div class="vlist-item edit-mode" data-edit-id="'+item.id+'">';
         cfg.keys.forEach(function(k, ki){
           html += '<div class="verb-field"><label>'+cfg.fieldLabels[ki]+'</label>';
           html += '<input type="text" class="edit-field" data-key="'+k+'" value="'+escapeHtml(item[k]||"")+'"></div>';
         });
+        html += '<div class="verb-field"><label>Karteikasten</label>';
+        html += '<div class="segmented" id="edit-folder-segment">';
+        FOLDER_OPTIONS.forEach(function(f){
+          html += '<button data-editfolder="'+f.id+'" class="'+(activeFolder===f.id?"active":"")+'">'+f.label+'</button>';
+        });
+        html += '</div></div>';
         html += '<div class="edit-actions">';
         html += '<button class="btn btn-primary" data-save-edit="'+item.id+'">Speichern</button>';
         html += '<button class="btn btn-secondary" data-cancel-edit="1">Abbrechen</button>';
@@ -1065,15 +1095,34 @@
       });
     }
 
+    var manageTypeSeg = document.getElementById("manage-type-segment");
+    if(manageTypeSeg) manageTypeSeg.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){
+        state.manageTypeFilter = this.getAttribute("data-mtype");
+        state.editingId = null;
+        render();
+      });
+    });
+
     app.querySelectorAll("[data-edititem]").forEach(function(btn){
       btn.addEventListener("click", function(){
         state.editingId = this.getAttribute("data-edititem");
+        var item = state.data.items.find(function(i){ return i.id === state.editingId; });
+        state.editFolder = item ? item.folder : "nicht";
         render();
       });
     });
     app.querySelectorAll("[data-cancel-edit]").forEach(function(btn){
       btn.addEventListener("click", function(){
         state.editingId = null;
+        state.editFolder = null;
+        render();
+      });
+    });
+    var editFolderSeg = document.getElementById("edit-folder-segment");
+    if(editFolderSeg) editFolderSeg.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){
+        state.editFolder = this.getAttribute("data-editfolder");
         render();
       });
     });
@@ -1086,9 +1135,24 @@
           block.querySelectorAll(".edit-field").forEach(function(inp){
             item[inp.getAttribute("data-key")] = inp.value.trim();
           });
+          if(state.editFolder){
+            item.folder = state.editFolder;
+            // Fortschritts-Flags an den manuell gewählten Karteikasten
+            // anpassen, damit die nächste richtige/falsche Antwort beim
+            // Lernen sinnvoll weiterrechnet (statt z.B. direkt wieder von
+            // "Kann ich" zurück auf "Kann ich fast" zu rutschen).
+            if(state.editFolder === "nicht"){
+              item.correctDeEn = false; item.correctEnDe = false;
+            } else if(state.editFolder === "fast"){
+              item.correctDeEn = true; item.correctEnDe = false;
+            } else if(state.editFolder === "kann"){
+              item.correctDeEn = true; item.correctEnDe = true;
+            }
+          }
           saveData();
         }
         state.editingId = null;
+        state.editFolder = null;
         render();
       });
     });
@@ -1790,18 +1854,24 @@
   //  "Kann ich"        -> beide Richtungen schon einmal richtig
   // Ein Fehler in irgendeiner Richtung setzt beide Fortschritte zurück und
   // schickt die Vokabel zurück nach "Kann ich nicht".
+  // Drei-Stufen-Fortschritt, pro Richtung einzeln verfolgt:
+  //  "Kann ich nicht"  -> keine Richtung richtig
+  //  "Kann ich fast"   -> genau eine der beiden Richtungen richtig
+  //  "Kann ich"        -> beide Richtungen richtig
+  // Ein Fehler betrifft NUR die gerade abgefragte Richtung - eine bereits
+  // erledigte andere Richtung bleibt erhalten. Eine Vokabel in "Kann ich
+  // fast" bleibt also so lange dort, bis auch die fehlende Richtung einmal
+  // richtig beantwortet wurde; sie fällt nicht wegen eines Fehlers ganz
+  // zurück auf "Kann ich nicht".
   function applyResultToItem(itemId, dir, isCorrect){
     var item = state.data.items.find(function(i){ return i.id === itemId; });
     if(item){
-      if(isCorrect){
-        if(dir === "de-en") item.correctDeEn = true;
-        else item.correctEnDe = true;
-        item.folder = (item.correctDeEn && item.correctEnDe) ? "kann" : "fast";
-      } else {
-        item.correctDeEn = false;
-        item.correctEnDe = false;
-        item.folder = "nicht";
-      }
+      if(dir === "de-en") item.correctDeEn = isCorrect;
+      else item.correctEnDe = isCorrect;
+
+      if(item.correctDeEn && item.correctEnDe) item.folder = "kann";
+      else if(item.correctDeEn || item.correctEnDe) item.folder = "fast";
+      else item.folder = "nicht";
     }
     saveData();
   }
