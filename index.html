@@ -184,6 +184,13 @@
 
   .empty{text-align:center; padding:30px 10px; color:var(--text-soft); font-size:14px;}
 
+  .kann-table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -18px; padding:0 18px;}
+  .kann-table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .kann-table th{text-align:left; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--text-soft); padding:0 12px 8px 0; border-bottom:1.5px solid var(--border); white-space:nowrap;}
+  .kann-table td{padding:10px 12px 10px 0; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text);}
+  .kann-table td:first-child{font-weight:600;}
+  .kann-table tr:last-child td{border-bottom:none;}
+
   .upload-grid{display:flex; gap:10px;}
   .upload-grid .btn{flex:1;}
 
@@ -458,6 +465,7 @@
     else if(state.view === "learn") el.innerHTML = renderLearn();
     else if(state.view === "summary") el.innerHTML = renderSummary();
     else if(state.view === "manage") el.innerHTML = renderManage();
+    else if(state.view === "kannlist") el.innerHTML = renderKannList();
     bindEvents();
   }
 
@@ -779,6 +787,47 @@
     return "Alle Vokabeln";
   }
 
+  // Reine Übersicht ohne Abfrage: zeigt alle Vokabeln aus "Kann ich" als
+  // übersichtliche Tabelle, beginnend mit dem deutschen Wort. Bei Verben
+  // werden alle 3 Zeitformen mit angezeigt.
+  function renderKannList(){
+    var typeFilter = state.learnTypeFilter;
+    var isVerb3 = typeFilter === "verb3";
+    var items = itemsIn("kann", typeFilter).slice().sort(function(a,b){
+      return (a.de||"").localeCompare(b.de||"", "de");
+    });
+
+    var html = '';
+    html += backBar("home", "Kann ich" + (isVerb3 ? " — 3 Zeitformen" : ""));
+
+    if(items.length === 0){
+      html += '<div class="card"><div class="empty">Noch keine Vokabeln in „Kann ich".<br>Übe ein paar Runden, dann tauchen sie hier auf.</div></div>';
+      return html;
+    }
+
+    html += '<div class="card">';
+    html += '<p class="hint" style="margin-top:0;">'+items.length+' Vokabel'+(items.length===1?"":"n")+' — nur zur Übersicht, keine Abfrage.</p>';
+    html += '<div class="kann-table-wrap"><table class="kann-table"><thead><tr>';
+    if(isVerb3){
+      html += '<th>Deutsch</th><th>Infinitiv</th><th>Simple Past</th><th>Partizip II</th>';
+    } else {
+      html += '<th>Deutsch</th><th>Englisch</th>';
+    }
+    html += '</tr></thead><tbody>';
+    items.forEach(function(item){
+      html += '<tr>';
+      if(isVerb3){
+        html += '<td>'+escapeHtml(item.de)+'</td><td>'+escapeHtml(item.inf)+'</td><td>'+escapeHtml(item.past)+'</td><td>'+escapeHtml(item.pp)+'</td>';
+      } else {
+        html += '<td>'+escapeHtml(item.de)+'</td><td>'+escapeHtml(item.en)+'</td>';
+      }
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '</div>';
+    return html;
+  }
+
   function renderSummary(){
     var s = state.learnStats;
     var html = '';
@@ -933,7 +982,12 @@
     app.querySelectorAll(".folder-row").forEach(function(row){
       row.addEventListener("click", function(){
         var f = this.getAttribute("data-folder");
-        startLearning(f);
+        if(f === "kann"){
+          state.view = "kannlist";
+          render();
+        } else {
+          startLearning(f);
+        }
       });
     });
 
