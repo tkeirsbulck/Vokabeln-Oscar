@@ -78,6 +78,7 @@
   .folder-row .fname{font-family:var(--sans); font-size:17px; font-weight:600;}
   .folder-row .fcount{font-size:13px; opacity:.85; margin-top:2px;}
   .folder-row.nicht{background:linear-gradient(135deg,#E5484D,#C43A3F);}
+  .folder-row.fast{background:linear-gradient(135deg,#E8B84B,#C89A2E); color:#2A2004;}
   .folder-row.kann{background:linear-gradient(135deg,#31B073,#1F8C57);}
   .folder-row.alle{background:linear-gradient(135deg,#5A9AF5,#3E76D6);}
   .folder-row.disabled{opacity:.4; box-shadow:none;}
@@ -171,6 +172,7 @@
   .vlist-words .en{color:var(--text-soft);}
   .vlist-tag{font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; margin-top:4px; display:inline-block;}
   .vlist-tag.nicht{background:var(--red-soft); color:#F19A9D;}
+  .vlist-tag.fast{background:#3A3018; color:#E8B84B;}
   .vlist-tag.kann{background:var(--green-soft); color:#6FDBA0;}
   .vlist-item .del{background:none; color:#7d7b74; font-size:18px; padding:4px 8px;}
   .vlist-item .edit{background:none; color:var(--text-soft); font-size:16px; padding:4px 8px;}
@@ -232,12 +234,12 @@
   // Ohne eigene Werte (Platzhalter unverändert) läuft die App wie bisher
   // rein lokal auf dem jeweiligen Gerät weiter - nichts bricht dadurch.
   var firebaseConfig = {
-    apiKey: "AIzaSyB5Lm2vyRfT06mQPke_9139lNY5w2rJ25U",
-    authDomain: "vokabeln-oscar.firebaseapp.com",
-    projectId: "vokabeln-oscar",
-    storageBucket: "vokabeln-oscar.firebasestorage.app",
-    messagingSenderId: "741287549695",
-    appId: "1:741287549695:web:82215600df52037d874aca"
+    apiKey: "DEIN_API_KEY",
+    authDomain: "DEIN_PROJEKT.firebaseapp.com",
+    projectId: "DEIN_PROJEKT",
+    storageBucket: "DEIN_PROJEKT.appspot.com",
+    messagingSenderId: "DEINE_SENDER_ID",
+    appId: "DEINE_APP_ID"
   };
   var CLOUD_CONFIGURED = !!(firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf("DEIN_") !== 0);
   // ============================================================
@@ -264,7 +266,8 @@
     cloudEnabled: false,
     authUser: null,
     authMode: "login",
-    authError: null
+    authError: null,
+    ocrError: null
   };
 
   var dragState = { active: false, splitIdx: 0 };
@@ -349,7 +352,7 @@
       keys: ["de","inf","past","pp"],
       shortLabels: ["Sp. 1","Sp. 2","Sp. 3","Sp. 4"],
       fieldLabels: ["Deutsch","Infinitiv","Simple Past","Partizip II"],
-      splits: [25,50,75]
+      splits: [18,36,54]
     }
   };
 
@@ -392,11 +395,54 @@
     return (s||"").trim().toLowerCase().replace(/\s+/g," ");
   }
 
+  // Klammer-Angaben wie "(be)kämpfen", "(sich) fühlen" oder "(fest)halten"
+  // markieren einen optionalen Wortbestandteil. Beide Varianten sollen als
+  // richtig gelten: mit dem Klammerinhalt (z.B. "bekämpfen"/"sich fühlen")
+  // UND ohne ihn (z.B. "kämpfen"/"fühlen"). Leerzeichen bleiben dabei genau
+  // so erhalten, wie sie im Original stehen.
+  function expandParenthetical(text){
+    if(!/\([^)]*\)/.test(text)) return [text];
+    var withWord = text.replace(/[()]/g, "").trim();
+    var withoutWord = text.replace(/\([^)]*\)\s*/, "").trim();
+    var variants = [withWord];
+    if(withoutWord && withoutWord !== withWord) variants.push(withoutWord);
+    return variants;
+  }
+
+  function splitOptions(s){
+    var raw = (s||"").split(/[\/,;]/).map(function(o){ return o.trim(); }).filter(Boolean);
+    var expanded = [];
+    raw.forEach(function(opt){
+      expandParenthetical(opt).forEach(function(v){ expanded.push(normalize(v)); });
+    });
+    return expanded.filter(Boolean);
+  }
+
   function answerMatches(given, accepted){
     var g = normalize(given);
     if(!g) return false;
-    var options = accepted.split(/[\/,]/).map(normalize).filter(Boolean);
-    return options.indexOf(g) !== -1;
+
+    // 1) Exakte Übereinstimmung mit der kompletten Lösung, so wie sie
+    //    angezeigt wird (z.B. "was/were" genau so eingetippt).
+    if(g === normalize(accepted)) return true;
+
+    // 2) Eine der per / , oder ; getrennten Einzeloptionen wurde eingegeben
+    //    (z.B. nur "was" oder nur "were"), inkl. Klammer-Varianten
+    //    (z.B. "kämpfen" oder "bekämpfen" bei "(be)kämpfen").
+    var acceptedOptions = splitOptions(accepted);
+    if(acceptedOptions.indexOf(g) !== -1) return true;
+
+    // 3) Alle Optionen wurden eingegeben, nur mit einem anderen Trennzeichen
+    //    als in der Lösung hinterlegt (z.B. Lösung "was, were", Eingabe
+    //    "was/were" oder umgekehrt) - Reihenfolge spielt dabei keine Rolle.
+    var givenOptions = splitOptions(given);
+    if(givenOptions.length > 1 && acceptedOptions.length > 1){
+      var sortedGiven = givenOptions.slice().sort().join("|");
+      var sortedAccepted = acceptedOptions.slice().sort().join("|");
+      if(sortedGiven === sortedAccepted) return true;
+    }
+
+    return false;
   }
 
   function render(){
@@ -442,6 +488,7 @@
   function renderHome(){
     var typeFilter = state.learnTypeFilter;
     var nicht = itemsIn("nicht", typeFilter).length;
+    var fast = itemsIn("fast", typeFilter).length;
     var kann = itemsIn("kann", typeFilter).length;
     var alle = itemsIn("alle", typeFilter).length;
 
@@ -477,10 +524,12 @@
         ? 'Du siehst das deutsche Wort und gibst die englische Übersetzung ein.'
         : 'Du siehst das englische Wort und gibst die deutsche Übersetzung ein.')+'</p>';
     }
+    html += '<p class="hint" style="margin:6px 0 0;">Bei „Kann ich fast" wird diese Auswahl ignoriert - dort wird automatisch je Vokabel die noch fehlende Richtung abgefragt.</p>';
     html += '</div>';
 
     html += '<div class="section-title">Karteikasten — '+(typeFilter==="verb3"?"3 Zeitformen":"Normale Vokabeln")+'</div>';
     html += folderRow("nicht", "Kann ich nicht", nicht, "nicht", "🔴");
+    html += folderRow("fast", "Kann ich fast", fast, "fast", "🟡");
     html += folderRow("kann", "Kann ich", kann, "kann", "🟢");
     html += folderRow("alle", "Alle lernen", alle, "alle", "🔵");
 
@@ -535,29 +584,19 @@
     var html = '';
     html += backBar("capture", "Foto vorbereiten");
     html += '<div class="card">';
-    html += '<span class="label">Was zeigt das Foto?</span>';
-    html += '<div class="segmented" id="crop-mode-segment">';
-    html += '<button data-mode="table" class="'+(state.cropMode==="table"?"active":"")+'">Tabelle ('+colCount+' Spalten)</button>';
-    html += '<button data-mode="list" class="'+(state.cropMode==="list"?"active":"")+'">Liste (1 Spalte)</button>';
-    html += '</div>';
-    html += '<div style="height:14px;"></div>';
-    if(state.cropMode === "table"){
-      html += '<p class="hint" style="margin-top:0;">Verschiebe die Linien genau zwischen die '+colCount+' Spalten. '+(state.vocabType==="verb3"?"In welcher Reihenfolge Deutsch/Infinitiv/Simple Past/Partizip stehen, ist egal — die App erkennt automatisch, welche Spalte Deutsch ist.":"Das trennt die Texterkennung sauber pro Spalte.")+'</p>';
-      html += '<div id="crop-container">';
-      html += '<img src="'+state.captureImage+'">';
-      var boundaries = [0].concat(state.cropSplits).concat([100]);
-      for(var ci=0; ci<colCount; ci++){
-        var centerPct = (boundaries[ci] + boundaries[ci+1]) / 2;
-        html += '<div class="crop-col-label" style="left:'+centerPct+'%; transform:translateX(-50%);">'+cfg.shortLabels[ci]+'</div>';
-      }
-      state.cropSplits.forEach(function(pct, i){
-        html += '<div class="crop-line" data-split-idx="'+i+'" style="left:'+pct+'%;"><div class="handle"></div></div>';
-      });
-      html += '</div>';
-    } else {
-      html += '<p class="hint" style="margin-top:0;">Die gesamte Seite wird als eine Liste erkannt (pro Zeile: '+cfg.fieldLabels.join(" – ")+').</p>';
-      html += '<img src="'+state.captureImage+'" style="width:100%; border-radius:12px; display:block; border:1px solid var(--border);">';
+    html += '<span class="label">Spalten zuschneiden ('+colCount+')</span>';
+    html += '<p class="hint" style="margin-top:0;">Verschiebe die Linien grob zwischen die Spalten - Präzision ist nicht nötig, ein kleiner Abstand zum Text reicht. '+(state.vocabType==="verb3"?"In welcher Reihenfolge Deutsch/Infinitiv/Simple Past/Partizip stehen, ist egal — die App erkennt automatisch, welche Spalte Deutsch ist. Die letzte Spalte (meist die deutsche Bedeutung) darf ruhig deutlich breiter sein.":"Das trennt die Texterkennung sauber pro Spalte.")+'</p>';
+    html += '<div id="crop-container">';
+    html += '<img src="'+state.captureImage+'">';
+    var boundaries = [0].concat(state.cropSplits).concat([100]);
+    for(var ci=0; ci<colCount; ci++){
+      var centerPct = (boundaries[ci] + boundaries[ci+1]) / 2;
+      html += '<div class="crop-col-label" style="left:'+centerPct+'%; transform:translateX(-50%);">'+cfg.shortLabels[ci]+'</div>';
     }
+    state.cropSplits.forEach(function(pct, i){
+      html += '<div class="crop-line" data-split-idx="'+i+'" style="left:'+pct+'%;"><div class="handle"></div></div>';
+    });
+    html += '</div>';
     html += '</div>';
     html += '<button class="btn btn-primary" id="btn-crop-continue">Weiter</button>';
     return html;
@@ -571,6 +610,15 @@
     var cfg = vocabConfig(state.reviewVocabType);
     var html = '';
     html += backBar("capture", "Vokabeln prüfen");
+
+    if(state.ocrError){
+      html += '<div class="card">';
+      html += '<div class="feedback no"><div class="fb-headline"><span class="fb-icon">⚠️</span>Texterkennung fehlgeschlagen</div>';
+      html += '<div style="margin-top:6px;"><span class="fb-label">Technischer Fehler</span><div class="fb-value" style="font-size:15px;">'+escapeHtml(state.ocrError)+'</div></div></div>';
+      html += '<p class="hint" style="margin:10px 0 0;">Du kannst die Vokabeln unten manuell eingeben, oder es mit einem anderen/schärferen Foto erneut versuchen.</p>';
+      html += '</div>';
+    }
+
     html += '<div class="card">';
 
     if(state.reviewVocabType === "verb3"){
@@ -724,6 +772,7 @@
 
   function folderTitle(f){
     if(f==="nicht") return "Kann ich nicht";
+    if(f==="fast") return "Kann ich fast";
     if(f==="kann") return "Kann ich";
     return "Alle Vokabeln";
   }
@@ -736,7 +785,7 @@
     html += '<div class="stat ok"><div class="n">'+s.correct+'</div><div class="l">richtig</div></div>';
     html += '<div class="stat no"><div class="n">'+s.wrong+'</div><div class="l">falsch</div></div>';
     html += '</div>';
-    html += '<p class="hint">Eine Vokabel wandert erst nach „Kann ich", wenn sie sowohl Deutsch→Englisch als auch Englisch→Deutsch schon einmal richtig beantwortet wurde. Bei einem Fehler geht es zurück nach „Kann ich nicht".</p>';
+    html += '<p class="hint">Nach der ersten richtig beantworteten Richtung wandert eine Vokabel nach „Kann ich fast" - dort wird dann gezielt nur noch die fehlende Richtung abgefragt. Erst wenn auch diese richtig war, geht es weiter nach „Kann ich". Bei einem Fehler geht es zurück nach „Kann ich nicht".</p>';
     html += '<button class="btn btn-primary" id="btn-home">Zur Übersicht</button>';
     return html;
   }
@@ -787,7 +836,7 @@
         } else {
           html += '<div><div class="vlist-words">'+escapeHtml(item.de)+' <span class="en">— '+escapeHtml(item.en)+'</span></div>';
         }
-        html += '<span class="vlist-tag '+item.folder+'">'+(item.folder==="kann"?"Kann ich":"Kann ich nicht")+'</span></div>';
+        html += '<span class="vlist-tag '+item.folder+'">'+folderTitle(item.folder)+'</span></div>';
         html += '<div class="item-actions">';
         html += '<button class="edit" data-edititem="'+item.id+'">✎</button>';
         html += '<button class="del" data-delitem="'+item.id+'">×</button>';
@@ -823,7 +872,7 @@
     if(manageBtn) manageBtn.addEventListener("click", function(){ state.view = "manage"; render(); });
 
     var capBtn = document.getElementById("btn-capture");
-    if(capBtn) capBtn.addEventListener("click", function(){ state.captureLoading=false; state.view = "capture"; render(); });
+    if(capBtn) capBtn.addEventListener("click", function(){ state.captureLoading=false; state.ocrError=null; state.view = "capture"; render(); });
 
     var vocabTypeSeg = document.getElementById("vocab-type-segment");
     if(vocabTypeSeg) vocabTypeSeg.querySelectorAll("button").forEach(function(b){
@@ -882,13 +931,6 @@
       render();
     });
 
-    var cropModeSeg = document.getElementById("crop-mode-segment");
-    if(cropModeSeg) cropModeSeg.querySelectorAll("button").forEach(function(b){
-      b.addEventListener("click", function(){
-        state.cropMode = this.getAttribute("data-mode");
-        render();
-      });
-    });
     var cropLines = app.querySelectorAll(".crop-line");
     var cropContainer = document.getElementById("crop-container");
     if(cropLines.length && cropContainer){
@@ -917,12 +959,12 @@
     }
     var cropContinue = document.getElementById("btn-crop-continue");
     if(cropContinue) cropContinue.addEventListener("click", function(){
+      state.ocrError = null;
       state.captureLoading = true;
       state.captureLoadingMsg = "Text wird erkannt …";
       state.view = "capture";
       render();
-      if(state.cropMode === "table") runTableOcr();
-      else runListOcr();
+      runTableOcr();
     });
 
     var addRow = document.getElementById("btn-add-row");
@@ -1108,11 +1150,13 @@
     reader.readAsDataURL(file);
   }
 
-  function ocrFailFallback(){
+  function ocrFailFallback(err){
+    console.error("OCR fehlgeschlagen:", err);
     state.captureLoading = false;
     state.reviewVocabType = state.vocabType;
     state.reviewRows = [emptyRow(state.vocabType)];
     state.view = "review";
+    state.ocrError = err ? (err.message || String(err)) : "Unbekannter Fehler bei der Texterkennung.";
     render();
   }
 
@@ -1236,13 +1280,30 @@
   // automatisch, welche der Spalten Deutsch ist (per Sprach-Erkennung über
   // alle Zeilen hinweg), und ordnet die restlichen 3 Spalten - in ihrer
   // ursprünglichen Reihenfolge - als Infinitiv/Simple Past/Partizip II ein.
+  // Die deutsche Bedeutungsspalte listet bei Wörterbuch-Tabellen oft
+  // mehrere Bedeutungen auf (getrennt durch ";" oder ",", ergänzt durch
+  // Klammer-Hinweise wie "(Geld)") - während die drei Verbform-Spalten
+  // fast immer aus einem einzelnen, unpunktierten Wort bestehen. Dieses
+  // Signal ist deutlich zuverlässiger als reine Wort-Erkennung, gerade bei
+  // kurzen, unauffälligen Wörtern ohne erkennbare Sprachmerkmale.
+  function complexityScore(text){
+    var t = text || "";
+    var score = 0;
+    score += (t.match(/;/g)||[]).length * 2;
+    score += (t.match(/,/g)||[]).length * 1.5;
+    score += (t.match(/\(/g)||[]).length * 1.5;
+    var wordCount = t.trim().split(/\s+/).filter(Boolean).length;
+    score += Math.max(0, wordCount - 1) * 0.8;
+    return score;
+  }
+
   function reorderVerb3Columns(rows){
     if(!rows.length || rows[0].values.length !== 4) return rows;
     var colCount = rows[0].values.length;
     var scores = new Array(colCount).fill(0);
     rows.forEach(function(r){
       for(var c=0;c<colCount;c++){
-        scores[c] += wordDeScore(r.values[c]) - wordEnScore(r.values[c]);
+        scores[c] += wordDeScore(r.values[c]) - wordEnScore(r.values[c]) + complexityScore(r.values[c]);
       }
     });
     var deIdx = 0, bestScore = -Infinity;
@@ -1510,7 +1571,7 @@
     img.onload = function(){
       var w = img.naturalWidth, h = img.naturalHeight;
       var cfg = vocabConfig(state.vocabType);
-      var margin = Math.max(2, Math.round(w * 0.012));
+      var margin = Math.max(4, Math.round(w * 0.02));
       var boundariesPct = [0].concat(state.cropSplits).concat([100]);
       var colCount = cfg.keys.length;
       var ocrOptions = { tessedit_pageseg_mode: "4" };
@@ -1576,67 +1637,6 @@
     };
     img.onerror = ocrFailFallback;
     img.src = state.captureImage;
-  }
-
-  function runListOcr(){
-    var img = new Image();
-    img.onload = function(){
-      var w = img.naturalWidth, h = img.naturalHeight;
-      var cfg = vocabConfig(state.vocabType);
-      var region = regionToDataURL(img, 0, 0, w, h, 1000);
-      // PSM 6 (einzelner Textblock) passt für eine ganze Liste/Seite mit
-      // mehreren Zeilen gut - anders als bei schmalen Einzelspalten oben.
-      Tesseract.recognize(region.url, "deu+eng", { tessedit_pageseg_mode: "6" })
-        .then(function(result){
-          var text = (result && result.data && result.data.text) ? result.data.text : "";
-          var wrapped = parseOcrTextMulti(text, cfg.keys).map(function(vals, i){ return { values: vals, y: i }; });
-          var valueRows = filterHeaderValueRows(wrapped);
-          if(state.vocabType === "verb3") valueRows = reorderVerb3Columns(valueRows);
-          var rows = objectifyRows(valueRows, cfg.keys);
-          rows.forEach(function(r){ delete r._y; });
-          if(state.vocabType === "pair") rows = autoOrderRows(rows);
-
-          state.captureLoading = false;
-          state.reviewVocabType = state.vocabType;
-          state.reviewRows = rows.length ? rows : [emptyRow(state.vocabType)];
-          state.view = "review";
-          render();
-        })
-        .catch(ocrFailFallback);
-    };
-    img.onerror = ocrFailFallback;
-    img.src = state.captureImage;
-  }
-
-  function parseOcrTextMulti(text, keys){
-    var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
-    var rows = [];
-    lines.forEach(function(line){
-      var parts = null;
-      if(line.indexOf("\t") !== -1){
-        parts = line.split("\t");
-      } else if(/ [-–—] /.test(line)){
-        parts = line.split(/ [-–—] /);
-      } else if(line.indexOf("|") !== -1){
-        parts = line.split("|");
-      } else if(keys.length === 2 && line.indexOf(":") !== -1){
-        parts = line.split(":");
-      } else if(keys.length === 2 && line.indexOf("=") !== -1){
-        parts = line.split("=");
-      } else if(/ {2,}/.test(line)){
-        parts = line.split(/ {2,}/);
-      }
-      if(parts){
-        parts = parts.map(function(p){ return p.trim(); }).filter(function(p){ return p.length > 0; });
-      }
-      if(parts && parts.length >= 2){
-        var vals = keys.map(function(k, i){ return parts[i] || ""; });
-        if(vals[0] && vals[1]) rows.push(vals);
-      } else if(keys.length === 2 && line.length > 1){
-        rows.push([line, ""]);
-      }
-    });
-    return rows;
   }
 
   function saveReviewRows(){
@@ -1729,9 +1729,14 @@
   function startLearning(folder){
     var pool = itemsIn(folder, state.learnTypeFilter);
     if(pool.length === 0) return;
-    var dir = state.learnTypeFilter === "verb3" ? state.data.settings.verb3Direction : state.data.settings.direction;
+    var sessionDir = state.learnTypeFilter === "verb3" ? state.data.settings.verb3Direction : state.data.settings.direction;
 
     var queue = shuffle(pool).map(function(item){
+      // Im Karteikasten "Kann ich fast" ist pro Vokabel bereits eine
+      // Richtung richtig beantwortet worden - hier wird gezielt NUR die
+      // noch fehlende Richtung abgefragt, unabhängig von der oben
+      // gewählten Abfragerichtung.
+      var dir = folder === "fast" ? missingDirectionFor(item, sessionDir) : sessionDir;
       return { item: item, dir: dir };
     });
 
@@ -1747,19 +1752,25 @@
     render();
   }
 
-  // Eine Vokabel wandert erst nach "Kann ich", wenn sie sowohl in
-  // Deutsch->Englisch ALS AUCH in Englisch->Deutsch schon einmal richtig
-  // beantwortet wurde (statt wie vorher: zweimal hintereinander in der
-  // gleichen Richtung). Ein Fehler in einer der beiden Richtungen setzt
-  // beide Fortschritte zurück und schickt die Vokabel zurück nach
-  // "Kann ich nicht".
+  function missingDirectionFor(item, fallbackDir){
+    if(item.correctDeEn && !item.correctEnDe) return "en-de";
+    if(item.correctEnDe && !item.correctDeEn) return "de-en";
+    return fallbackDir; // Sollte im "Kann ich fast"-Ordner normalerweise nicht vorkommen.
+  }
+
+  // Drei-Stufen-Fortschritt:
+  //  "Kann ich nicht"  -> noch keine Richtung richtig
+  //  "Kann ich fast"   -> genau eine der beiden Richtungen schon richtig
+  //  "Kann ich"        -> beide Richtungen schon einmal richtig
+  // Ein Fehler in irgendeiner Richtung setzt beide Fortschritte zurück und
+  // schickt die Vokabel zurück nach "Kann ich nicht".
   function applyResultToItem(itemId, dir, isCorrect){
     var item = state.data.items.find(function(i){ return i.id === itemId; });
     if(item){
       if(isCorrect){
         if(dir === "de-en") item.correctDeEn = true;
         else item.correctEnDe = true;
-        if(item.correctDeEn && item.correctEnDe){ item.folder = "kann"; }
+        item.folder = (item.correctDeEn && item.correctEnDe) ? "kann" : "fast";
       } else {
         item.correctDeEn = false;
         item.correctEnDe = false;
@@ -1842,9 +1853,16 @@
       "auth/user-not-found": "Kein Konto mit dieser E-Mail gefunden.",
       "auth/wrong-password": "Falsches Passwort.",
       "auth/invalid-credential": "E-Mail oder Passwort falsch.",
-      "auth/too-many-requests": "Zu viele Versuche. Bitte kurz warten."
+      "auth/too-many-requests": "Zu viele Versuche. Bitte kurz warten.",
+      "auth/unauthorized-domain": "Diese Webadresse ist in Firebase noch nicht freigegeben (Authentication → Settings → Authorized domains).",
+      "auth/operation-not-allowed": "E-Mail/Passwort-Anmeldung ist in Firebase noch nicht aktiviert (Authentication → Sign-in method).",
+      "auth/configuration-not-found": "Firebase-Konfiguration unvollständig - bitte firebaseConfig-Werte in der Datei prüfen.",
+      "auth/invalid-api-key": "Der eingetragene apiKey ist ungültig - bitte in der Datei prüfen."
     };
-    return (code && map[code]) || "Etwas ist schiefgelaufen. Bitte erneut versuchen.";
+    if(code && map[code]) return map[code];
+    // Unbekannter Fehler: den technischen Code mit anzeigen, das hilft bei
+    // der Fehlersuche deutlich weiter als eine allgemeine Meldung.
+    return "Etwas ist schiefgelaufen" + (code ? " (" + code + ")" : "") + ". Bitte erneut versuchen.";
   }
 
   function handleAuthSubmit(){
