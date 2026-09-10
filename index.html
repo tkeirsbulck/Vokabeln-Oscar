@@ -1231,26 +1231,47 @@
     });
   }
 
-  function isHeaderRow(row){
+  // Für die Sonderprüfung der allerersten Zeile werden nur Begriffe
+  // herangezogen, die so gut wie nie eine echte Vokabel wären (nur reine
+  // Spaltenüberschriften). Wörter wie "Wort"/"word" oder "present" bleiben
+  // bewusst außen vor, da das echte, lernenswerte Vokabeln sein könnten.
+  var STRONG_HEADER_WORDS = ["deutsch","englisch","english","german",
+    "infinitiv","infinitive","simple past","past participle",
+    "partizip","partizip ii","partizip 2","zeitform","zeitformen"];
+
+  function isHeaderRow(row, isFirstRow){
     var de = (row.de||"").trim().toLowerCase();
     var en = (row.en||"").trim().toLowerCase();
-    return isHeaderWord(de) && isHeaderWord(en);
+    if(isHeaderWord(de) && isHeaderWord(en)) return true;
+    if(isFirstRow){
+      return STRONG_HEADER_WORDS.indexOf(de) !== -1 || STRONG_HEADER_WORDS.indexOf(en) !== -1;
+    }
+    return false;
   }
 
   // Generische Variante für beliebig viele Spalten (z.B. 4 bei Verben mit
-  // 3 Zeitformen): eine Zeile gilt als Kopfzeile, wenn ALLE nicht-leeren
-  // Werte Kopfzeilen-Wörter sind.
-  function isHeaderRowValues(values){
+  // 3 Zeitformen). Zwei Regeln:
+  //  1) ALLE (oder alle bis auf eine) nicht-leeren Werte sind Kopfzeilen-
+  //     Wörter - funktioniert unabhängig von der Zeilenposition.
+  //  2) Nur für die ALLERERSTE Zeile: reicht schon EIN eindeutiges
+  //     Kopfzeilen-Wort (z.B. "German" oder "Simple Past"), selbst wenn die
+  //     übrigen Spalten der Überschrift (z.B. durch fette/verzierte
+  //     Schrift) nicht korrekt erkannt wurden.
+  function isHeaderRowValues(values, isFirstRow){
     var nonEmpty = values.filter(function(v){ return (v||"").trim(); });
     if(nonEmpty.length < 2) return false;
     var matchCount = nonEmpty.filter(isHeaderWord).length;
     // Toleriert einen einzelnen Ausreißer (z.B. eine Spalte, die durch eine
     // leichte Fehlzuordnung nicht exakt das Kopfzeilen-Wort enthält).
-    return matchCount >= nonEmpty.length - 1 && matchCount >= 2;
+    if(matchCount >= nonEmpty.length - 1 && matchCount >= 2) return true;
+    if(isFirstRow){
+      return nonEmpty.some(function(v){ return STRONG_HEADER_WORDS.indexOf(v.trim().toLowerCase()) !== -1; });
+    }
+    return false;
   }
 
   function filterHeaderValueRows(rows){
-    return rows.filter(function(r){ return !isHeaderRowValues(r.values); });
+    return rows.filter(function(r, idx){ return !isHeaderRowValues(r.values, idx === 0); });
   }
 
   function objectifyRows(rows, keys){
@@ -1333,7 +1354,7 @@
   // Kopfzeilen wie "Deutsch | Englisch", die versehentlich mit erkannt wurden.
   function autoOrderRows(rows){
     if(!rows || rows.length === 0) return rows;
-    rows = rows.filter(function(r){ return !isHeaderRow(r); });
+    rows = rows.filter(function(r, idx){ return !isHeaderRow(r, idx === 0); });
     if(rows.length === 0) return rows;
     var leftNet = 0, rightNet = 0;
     rows.forEach(function(r){
@@ -1571,7 +1592,12 @@
     img.onload = function(){
       var w = img.naturalWidth, h = img.naturalHeight;
       var cfg = vocabConfig(state.vocabType);
-      var margin = Math.max(4, Math.round(w * 0.02));
+      // Kleiner, überwiegend FESTER Rand um jede Linie (nicht prozentual):
+      // Ein prozentualer Rand wird bei großen Bildern unnötig breit und
+      // schneidet dann in den Text hinein, wenn die Linie bewusst eng ans
+      // Wort gezogen wird. Ein kleiner fester Wert reicht, um nur die
+      // Linie selbst auszusparen.
+      var margin = Math.max(3, Math.round(w * 0.004));
       var boundariesPct = [0].concat(state.cropSplits).concat([100]);
       var colCount = cfg.keys.length;
       var ocrOptions = { tessedit_pageseg_mode: "4" };
